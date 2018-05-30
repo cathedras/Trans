@@ -1,0 +1,220 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:myzy.AgCustom">
+
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/AgCustom;component/Themes/AgCustomCommon.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+
+    <Style TargetType="{x:Type local:StatisticsCtl}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type local:StatisticsCtl}">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            BorderThickness="{TemplateBinding BorderThickness}">
+                        <Border.Resources>
+                            <Style TargetType="StackPanel" x:Key="spStyleForStatisticsCtl">
+                                <Setter Property="MinWidth" Value="50"/>
+                                <Setter Property="Margin" Value="2"/>
+                            </Style>
+                        </Border.Resources>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <ItemsControl  Grid.Row="0" Grid.Column="1" ItemsSource="{Binding  StatisticsManage, RelativeSource={RelativeSource FindAncestor, AncestorType=local:StatisticsCtl}}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Style="{StaticResource spStyleForStatisticsCtl}" Orientation="Horizontal">
+                                            <Grid Width="{Binding ActualWidth, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType=StackPanel}}" HorizontalAlignment="Stretch" >
+                                                <WrapPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                                                    <TextBlock Text="CH" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding ChannelId, Mode=OneWay, Converter={StaticResource IdxDispCvt}}" VerticalAlignment="Center"/>
+                                                    <Button VerticalAlignment="Center" Command="{Binding ResetCountCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:StatisticsCtl}}"
+                                                        CommandParameter="{Binding ChannelId}">
+                                                        <Button.ContentTemplate>
+                                                            <DataTemplate>
+                                                                <Image Width="8" Height="8" Source="../res/clear.png"/>
+                                                            </DataTemplate>
+                                                        </Button.ContentTemplate>
+                                                    </Button>
+                                                </WrapPanel>
+                                            </Grid>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Rows="1"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+
+                            <StackPanel Name="sp" Margin="0" Orientation="Vertical" Grid.Column="0" Grid.Row="1" VerticalAlignment="Stretch">
+                                <TextBlock Text="Test counts" Margin="2,5" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                                <TextBlock Text="Fail counts" Margin="2" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                                <TextBlock Text="Yield" Margin="2" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                            </StackPanel>
+
+                            <StackPanel Width="{Binding ElementName=sp, Path=Width}" Margin="2,0,2,2" Orientation="Vertical" Grid.Column="0" Grid.Row="2">
+                                <TextBlock Text="Total Yield" Margin="0" VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <ItemsControl Name="itemctl" Margin="0" Grid.Column="1" VerticalAlignment="Stretch" Grid.Row="1" 
+                                          ItemsSource="{Binding StatisticsManage, RelativeSource={RelativeSource FindAncestor, AncestorType=local:StatisticsCtl}}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Style="{StaticResource spStyleForStatisticsCtl}" Orientation="Vertical">
+                                            <TextBox VerticalAlignment="Center" IsReadOnly="True" Margin="2" FontSize="10" HorizontalAlignment="Stretch" TextAlignment="Center" Text="{Binding Total, Mode=OneWay}"></TextBox>
+                                            <TextBox VerticalAlignment="Center" IsReadOnly="True" Margin="2" FontSize="10" HorizontalAlignment="Stretch" TextAlignment="Center" Text="{Binding ErrCount, Mode=OneWay}"></TextBox>
+                                            <TextBox VerticalAlignment="Center" IsReadOnly="True" Margin="2" FontSize="10" HorizontalAlignment="Stretch" TextAlignment="Center" Text="{Binding Yield, Mode=OneWay, StringFormat=P2}"></TextBox>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Rows="1"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+
+                            <StackPanel Width="{Binding ElementName=itemctl, Path=Width}" Grid.Row="2" Grid.Column="1" Name="sp1" HorizontalAlignment="Stretch" Style="{StaticResource spStyleForStatisticsCtl}" Orientation="Vertical">
+                                <TextBox TextAlignment="Center" VerticalAlignment="Center" HorizontalAlignment="Stretch"  Margin="2,0" IsReadOnly="True" Text="{Binding StatisticsManage.YieldAll, Mode=OneWay, StringFormat={}{0:P2}, RelativeSource={RelativeSource FindAncestor, AncestorType=local:StatisticsCtl}}"></TextBox>
+                            </StackPanel>
+
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <local:VisibilityConvertor x:Key="VisibilityConvertor" />
+
+    <Style x:Key="FocusVisual">
+        <Setter Property="Control.Template">
+            <Setter.Value>
+                <ControlTemplate>
+                    <Rectangle Margin="2" SnapsToDevicePixels="true" Stroke="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" StrokeThickness="1" StrokeDashArray="1 2"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <SolidColorBrush x:Key="Button.Static.Background" Color="#FFDDDDDD"/>
+    <SolidColorBrush x:Key="Button.Static.Border" Color="#FF707070"/>
+    <SolidColorBrush x:Key="Button.MouseOver.Background" Color="#FFBEE6FD"/>
+    <SolidColorBrush x:Key="Button.MouseOver.Border" Color="#FF3C7FB1"/>
+    <SolidColorBrush x:Key="Button.Pressed.Background" Color="#FFC4E5F6"/>
+    <SolidColorBrush x:Key="Button.Pressed.Border" Color="#FF2C628B"/>
+    <SolidColorBrush x:Key="Button.Disabled.Background" Color="#FFF4F4F4"/>
+    <SolidColorBrush x:Key="Button.Disabled.Border" Color="#FFADB2B5"/>
+    <SolidColorBrush x:Key="Button.Disabled.Foreground" Color="#FF838383"/>
+
+    <Style TargetType="{x:Type local:ImageButton}" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}"/>
+        <Setter Property="Background" Value="{StaticResource Button.Static.Background}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Button.Static.Border}"/>
+        <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Padding" Value="1"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type local:ImageButton}">
+                    <Border x:Name="border"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" 
+                            Background="{TemplateBinding Background}"
+                            Margin="{TemplateBinding Margin}"
+                            SnapsToDevicePixels="true">
+
+                        <Grid Width="{TemplateBinding Width}" Height="{TemplateBinding Height}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Image Margin="2 0"
+                                   Source="{TemplateBinding Image}"
+                                   Width="{TemplateBinding ImageWidth}"
+                                   Height="{TemplateBinding ImageHeight}"
+                                   Visibility="{TemplateBinding Image,Converter={StaticResource VisibilityConvertor}}"
+                                   HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" 
+                                   SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" 
+                                   VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                   Grid.Column="1"/>
+                            <ContentPresenter x:Name="contentText"
+                                       Content="{TemplateBinding Content}"
+                                       HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" 
+                                       Margin="{TemplateBinding Padding}" 
+                                       SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" 
+                                       VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                       Grid.Column="0"/>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsDefaulted" Value="true">
+                            <Setter Property="BorderBrush" TargetName="border" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="true">
+                            <Setter Property="Background" TargetName="border" Value="{StaticResource Button.MouseOver.Background}"/>
+                            <Setter Property="BorderBrush" TargetName="border" Value="{StaticResource Button.MouseOver.Border}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="true">
+                            <Setter Property="Background" TargetName="border" Value="{StaticResource Button.Pressed.Background}"/>
+                            <Setter Property="BorderBrush" TargetName="border" Value="{StaticResource Button.Pressed.Border}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="false">
+                            <Setter Property="Background" TargetName="border" Value="{StaticResource Button.Disabled.Background}"/>
+                            <Setter Property="BorderBrush" TargetName="border" Value="{StaticResource Button.Disabled.Border}"/>
+                            <Setter Property="ContentElement.IsEnabled" TargetName="contentText" Value="False"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="{x:Type UserControl}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate>
+                    <Grid DataContext="{Binding ElementName=root}">
+                        <Border Background="#90000000" Visibility="{Binding Visibility}">
+                            <Border BorderBrush="Black" BorderThickness="1" Background="AliceBlue" CornerRadius="10,0,10,0"
+                                    VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <Border.BitmapEffect>
+                                    <DropShadowBitmapEffect Color="Black" Opacity="0.5" Direction="270" ShadowDepth="0.7" />
+                                </Border.BitmapEffect>
+                                <Grid Margin="10">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock x:Name="MessageTextBlock" Text="{Binding Message}" TextWrapping="Wrap" Margin="5" />
+                                    <UniformGrid Grid.Row="1" Margin="5" Columns="2" HorizontalAlignment="Center" VerticalAlignment="Bottom">
+                                        <Button x:Name="OkButton" Command="{Binding OkBtnCmd, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType=local:ModalDialog}}" Content="Ok" Margin="2"  />
+                                        <Button x:Name="CancelButton" Command="{Binding CancelBtnCmd, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType=local:ModalDialog}}" Content="Cancel" Margin="2" />
+                                    </UniformGrid>
+                                </Grid>
+                            </Border>
+                        </Border>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>
