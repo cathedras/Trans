@@ -1,0 +1,57 @@
+﻿<ContentControl x:Class="myzy.Util.PylonEnumerationComboBox"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:myzy.Util"
+             xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
+             mc:Ignorable="d" >
+    <ContentControl.Resources>
+        <BooleanToVisibilityConverter x:Key="bool2viscvt"></BooleanToVisibilityConverter>
+    </ContentControl.Resources>
+    <Grid>
+        <Grid.Style>
+            <Style TargetType="Grid">
+                <Setter Property="IsEnabled" Value="True"></Setter>
+                <Style.Triggers>
+                    <MultiDataTrigger>
+                        <MultiDataTrigger.Conditions>
+                            <Condition Binding="{Binding IsError,RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:PylonEnumerationComboBox}}}" Value="true"></Condition>
+                        </MultiDataTrigger.Conditions>
+                        <MultiDataTrigger.Setters>
+                            <Setter Property="IsEnabled"  Value="False">
+
+                            </Setter>
+                        </MultiDataTrigger.Setters>
+                    </MultiDataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Grid.Style>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <TextBlock MinWidth="80" Text="{Binding EnumerationName, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:PylonEnumerationComboBox}}}"></TextBlock>
+        <ComboBox MinWidth="100" Grid.Column="1" Name="cbEnumerate" 
+                  SelectedValuePath="ValueName" DisplayMemberPath="ValueDisplayName" 
+                  SelectedIndex="{Binding CurEnumIdx, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:PylonEnumerationComboBox}}}"
+                  ItemsSource="{Binding EnumItems, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:PylonEnumerationComboBox}}}">
+
+            <!--<i:Interaction.Triggers>
+                <i:EventTrigger EventName="SelectionChanged">
+                    <i:InvokeCommandAction 
+                        CommandParameter="{Binding ElementName=cbEnumerate, Path=SelectedItem}"
+                        Command="{Binding ValueChangedCmd, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:PylonEnumerationComboBox}}}">
+                        
+                    </i:InvokeCommandAction>
+                </i:EventTrigger>
+            </i:Interaction.Triggers>-->
+
+        </ComboBox>
+        <TextBlock Visibility="{Binding IsError, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:PylonEnumerationComboBox}}, Converter={StaticResource bool2viscvt}}" 
+                   Name="ErrTb" Grid.Column="1" Text="&lt;Error&gt;"></TextBlock>
+
+    </Grid>
+</ContentControl>

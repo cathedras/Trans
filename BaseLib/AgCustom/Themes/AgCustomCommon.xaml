@@ -1,0 +1,16 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:myzy.AgCustom"
+                    xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit">
+    <Color x:Key="CtlBkColor">#E2F6FF</Color>
+    <Color x:Key="HeaderColor">#3E6E7C</Color>
+    <SolidColorBrush x:Key="HeaderBrush"  Color="{StaticResource HeaderColor}"></SolidColorBrush>
+    <SolidColorBrush x:Key="CtlBkBrush"  Color="{StaticResource CtlBkColor}"></SolidColorBrush>
+    <SolidColorBrush x:Key="PassBrush"  Color="ForestGreen"></SolidColorBrush>
+    <SolidColorBrush x:Key="FailBrush"  Color="OrangeRed"></SolidColorBrush>
+    <BooleanToVisibilityConverter x:Key="boolToVisibilty"></BooleanToVisibilityConverter>
+    <xctk:IsStringEmptyConverter x:Key="IsStringEmptyConverter"></xctk:IsStringEmptyConverter>
+    <local:IdxDispCvt x:Key="IdxDispCvt"></local:IdxDispCvt>
+    <xctk:InverseBoolConverter x:Key="InverseBoolConverter"></xctk:InverseBoolConverter>
+    <xctk:VisibilityToBoolConverter x:Key="VisibilityToBoolConverter" Inverted="True"></xctk:VisibilityToBoolConverter>
+</ResourceDictionary>
