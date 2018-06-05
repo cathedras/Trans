@@ -1,7 +1,9 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:local="clr-namespace:myzy.AgCustom"
-                    xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit">
+                    xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+                    xmlns:system="clr-namespace:System;assembly=mscorlib">
+
     <Color x:Key="CtlBkColor">#E2F6FF</Color>
     <Color x:Key="HeaderColor">#3E6E7C</Color>
     <SolidColorBrush x:Key="HeaderBrush"  Color="{StaticResource HeaderColor}"></SolidColorBrush>
@@ -13,4 +15,13 @@
     <local:IdxDispCvt x:Key="IdxDispCvt"></local:IdxDispCvt>
     <xctk:InverseBoolConverter x:Key="InverseBoolConverter"></xctk:InverseBoolConverter>
     <xctk:VisibilityToBoolConverter x:Key="VisibilityToBoolConverter" Inverted="True"></xctk:VisibilityToBoolConverter>
+
+    <system:String x:Key="StrLoginTitle" >Login To System</system:String>
+    <system:String x:Key="StrLoginCancel" >Cancel</system:String>
+    <system:String x:Key="StrLogin" >Login</system:String>
+    <system:String x:Key="StrUserName" >User Name</system:String>
+    <system:String x:Key="StrPassword" >Password</system:String>
+    <system:String x:Key="StrMsgLogDate" >Date</system:String>
+    <system:String x:Key="StrMsgLogInfo" >Msg Info</system:String>
+
 </ResourceDictionary>

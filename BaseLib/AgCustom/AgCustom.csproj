@@ -42,8 +42,10 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\extern\log4net.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="System" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Windows.Interactivity, Version=4.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL" />
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Core" />
@@ -62,6 +64,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="controls\LogItemViewEx.cs" />
+    <Compile Include="Helper\AgCustomHelper.cs" />
     <Compile Include="ModalDialog.cs" />
     <Compile Include="controls\ImageButton.cs" />
     <Compile Include="controls\StatisticsCtl.cs" />
@@ -89,6 +93,7 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
+    <Compile Include="StartUp.cs" />
     <Compile Include="Wnd\LoginWnd.xaml.cs">
       <DependentUpon>LoginWnd.xaml</DependentUpon>
     </Compile>

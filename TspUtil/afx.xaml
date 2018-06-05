@@ -1,0 +1,18 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:util="clr-namespace:myzy.Util;assembly=Util"
+                    xmlns:system="clr-namespace:System;assembly=mscorlib"
+                    xmlns:local="clr-namespace:TspUtil">
+
+    <system:String x:Key="StrMsgLogDate" >日期</system:String>
+    <system:String x:Key="StrMsgLogInfo" >详情</system:String>
+    <system:String x:Key="RegexHexStr">^[a-f|A-F|0-9|\s]*$</system:String>
+    <system:String x:Key="RegexRgbAStr">^[r|g|b|R|G|B|a|A|\s]*$</system:String>
+
+    <ObjectDataProvider x:Key="PadLocModeProvider" ObjectType="{x:Type util:ItemSourceItemInfoEnumHelper}" MethodName="GenItemSourceItems">
+        <ObjectDataProvider.MethodParameters>
+            <x:Type TypeName="local:PadLoc" />
+        </ObjectDataProvider.MethodParameters>
+    </ObjectDataProvider>
+
+</ResourceDictionary>
