@@ -23,6 +23,20 @@ namespace TspUtil
             ExceptionHandler.AddHandler(false, false, false);
             NativeDllHelper.PreLoadNativeDlls();
         }
+
+        protected override void OnStartup(StartupEventArgs e)
+        {
+            //Current.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            //var login = new LoginWnd();
+            //login.ShowDialog();
+            //Current.ShutdownMode = ShutdownMode.OnMainWindowClose;
+
+            var mainWnd = new MainWindow();
+            Current.MainWindow = mainWnd;
+            Current.MainWindow?.Show();
+
+            base.OnStartup(e);
+        }
     }
 
     public class TspStartUp
@@ -32,18 +46,8 @@ namespace TspUtil
         {
             try
             {
-                var wrap = new SingleInstanceApplicationWrapper();
-                var wnd = new MainWindow();
-                wrap.SetMainWnd(wnd);
-
-                wrap.OnPreLoadEvent += () =>
-                {
-                    ExceptionHandler.AddHandler(false, false, false);
-                    NativeDllHelper.PreLoadNativeDlls();
-
-                    //var login = new LoginWnd();
-                    //login.ShowDialog();
-                };
+                var app = new App();
+                var wrap = new SingleInstanceApplicationWrapper(app);
                 wrap.Run(args);
             }
             catch (Exception e)

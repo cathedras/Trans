@@ -21,48 +21,45 @@ namespace myzy.AgCustom
             }
         }
     }
+
+    public partial class App : Application
+    {
+        protected override void OnStartup(StartupEventArgs e)
+        {
+            //Current.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
+            //var login = new LoginWnd();
+            //login.ShowDialog();
+            //Current.ShutdownMode = ShutdownMode.OnMainWindowClose;
+
+            var mainWnd = new MainWindow();
+            Current.MainWindow = mainWnd;
+            Current.MainWindow?.Show();
+
+            base.OnStartup(e);
+        }
+    }
     */
 
     public class SingleInstanceApplicationWrapper : WindowsFormsApplicationBase
     {
         private Application _app;
-        private Window _mainWindow;
 
-        public SingleInstanceApplicationWrapper()
+        public SingleInstanceApplicationWrapper(Application app)
         {
             this.IsSingleInstance = true;
+            _app = app;
         }
-
-        public void SetMainWnd(Window wnd)
-        {
-            _mainWindow = wnd;
-        }
-
-        public event Action OnPreLoadEvent;
-
-        public event Func<bool> OnPreCheckEvent;
 
         protected override bool OnStartup(Microsoft.VisualBasic.ApplicationServices.StartupEventArgs eventArgs)
         {
-            var preCheck = true;
-            if (OnPreCheckEvent != null)
-            {
-                preCheck = OnPreCheckEvent.Invoke();
-            }
-
-            if (preCheck)
-            {
-                _app = new Application();
-                OnPreLoadEvent?.Invoke();
-                _app.Run(_mainWindow);
-                return false;
-            }
+            _app.Run();
             return false;
         }
 
         protected override void OnStartupNextInstance(StartupNextInstanceEventArgs eventArgs)
         {
-            _mainWindow?.Activate();
+            _app.MainWindow?.Activate();
         }
     }
 }
