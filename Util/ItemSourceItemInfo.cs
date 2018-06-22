@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
+using System.Reflection;
 using System.Reflection.Emit;
 
 namespace myzy.Util
@@ -16,12 +18,23 @@ namespace myzy.Util
             var objCollection = new ObservableCollection<ItemSourceItemInfo>();
             foreach (var value in Enum.GetValues(t))
             {
-                objCollection.Add(new ItemSourceItemInfo()
+                var fieldName = Enum.GetName(t, value);
+                if (fieldName != null)
                 {
-                    Name = Enum.GetName(t, value),
-                    Des = $"{Enum.GetName(t, value)?.ToUpperInvariant()}",
-                    Val = value,
-                });
+                    var desstr = $"{fieldName.ToUpperInvariant()}";
+                    var des = t.GetField(fieldName).GetCustomAttributes(typeof(DescriptionAttribute)).LastOrDefault();
+
+                    if (des != null)
+                    {
+                        desstr = ((DescriptionAttribute) des).Description;
+                    }
+                    objCollection.Add(new ItemSourceItemInfo()
+                    {
+                        Name = fieldName,
+                        Des = desstr,
+                        Val = value,
+                    });
+                }
             }
             return objCollection;
         }

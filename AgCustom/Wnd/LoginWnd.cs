@@ -11,14 +11,20 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using Xceed.Wpf.Toolkit.Core.Utilities;
 
 namespace myzy.AgCustom
 {
     /// <summary>
     /// Interaction logic for LoginWnd.xaml
     /// </summary>
-    public partial class LoginWnd
+    public partial class LoginWnd : Window
     {
+        static LoginWnd()
+        {
+            DefaultStyleKeyProperty.OverrideMetadata(typeof(LoginWnd), new FrameworkPropertyMetadata(typeof(LoginWnd)));
+        }
+
         public static readonly DependencyProperty UserNameProperty = DependencyProperty.Register("UserName", typeof(string), typeof(LoginWnd), new PropertyMetadata(default(string)));
         public static readonly DependencyProperty PasswordProperty = DependencyProperty.Register("Password", typeof(string), typeof(LoginWnd), new PropertyMetadata(default(string)));
         public static readonly DependencyProperty IsShowUserNameProperty =
@@ -29,21 +35,28 @@ namespace myzy.AgCustom
 
         public LoginWnd()
         {
-            InitializeComponent();
+            Width = 400;
+            Height = 200;
             this.Loaded += LoginWnd_Loaded;
         }
 
         private void LoginWnd_Loaded(object sender, RoutedEventArgs e)
         {
-            if (tbUserName.IsEnabled)
+            var tb = VisualTreeHelperEx.FindDescendantByName(this, "tbUserName");
+            var tb2 = VisualTreeHelperEx.FindDescendantByName(this, "tbPassword");
+
+            if (tb is TextBox tbUserName )
             {
-                tbUserName.Focus();
+                if (tbUserName.IsEnabled)
+                    tbUserName.Focus();
             }
-            else if (tbPassword.IsEnabled)
+            else if (tb2 is TextBox tbPassword)
             {
-                tbPassword.Focus();
+                if (tbPassword.IsEnabled)
+                    tbPassword.Focus();
             }
         }
+        
 
         public string UserName
         {

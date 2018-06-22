@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Data;
 using System.Linq;
 using System.Reflection;
 
@@ -7,7 +8,7 @@ namespace myzy.Util
 {
     public abstract class IntrinsicCfg
     {
-        protected  string _section = "cfg";
+        protected  string _section = "CFG";
         /// <summary>
         /// INI 配置文档
         /// </summary>
@@ -26,33 +27,47 @@ namespace myzy.Util
             {
                 try
                 {
-                    if (!_ini.ValueExists(_section, propertyInfo.Name))
+                    var attr2 = propertyInfo.GetCustomAttributes(typeof(SectionNameAttribute), true);
+                    var sec = _section;
+                    if (attr2.Any())
+                    {
+                        sec = ((SectionNameAttribute)attr2[0]).SectionName;
+                    }
+
+                    if (!_ini.ValueExists(sec, propertyInfo.Name))
                         continue;
 
                     Object obj = null;
                     var proTyp = propertyInfo.PropertyType;
                     if (proTyp == typeof(string))
                     {
-                        obj = _ini.ReadString(_section, propertyInfo.Name, "");
+                        obj = _ini.ReadString(sec, propertyInfo.Name, "");
                     }
                     else if (proTyp == typeof(int))
                     {
-                        obj = _ini.ReadInteger(_section, propertyInfo.Name, 0);
+                        obj = _ini.ReadInteger(sec, propertyInfo.Name, 0);
                     }
                     else if (proTyp == typeof(ushort))
                     {
-                        obj = _ini.ReadInteger(_section, propertyInfo.Name, 0);
+                        obj = _ini.ReadInteger(sec, propertyInfo.Name, 0);
                     }
                     else if (proTyp == typeof(double))
                     {
-                        var str = _ini.ReadString(_section, propertyInfo.Name, "");
+                        var str = _ini.ReadString(sec, propertyInfo.Name, "");
                         var val = 0d;
                         double.TryParse(str, out val);
                         obj = val;
                     }
+                    else if (proTyp == typeof(float))
+                    {
+                        var str = _ini.ReadString(sec, propertyInfo.Name, "");
+                        float val = 0f;
+                        float.TryParse(str, out val);
+                        obj = val;
+                    }
                     else if (proTyp == typeof(bool))
                     {
-                        obj = _ini.ReadBool(_section, propertyInfo.Name, false);
+                        obj = _ini.ReadBool(sec, propertyInfo.Name, false);
                     }
                     if (obj != null)
                     {
@@ -107,9 +122,20 @@ namespace myzy.Util
                     if (obj != null)
                     {
                         var attr = propertyInfo.GetCustomAttributes(typeof(IgnoreSerializeAttribute), true);
+
+                        var attr2 = propertyInfo.GetCustomAttributes(typeof(SectionNameAttribute), true);
+
+                        var attr3 = propertyInfo.GetCustomAttributes(typeof(DescriptionAttribute), true);
+
+                        var sec = _section;
+                        if (attr2.Any())
+                        {
+                            sec = ((SectionNameAttribute) attr2[0]).SectionName;
+                        }
+                        
                         if (!attr.Any())
                         {
-                            ini.WriteString(_section, propertyInfo.Name, obj.ToString());
+                            ini.WriteString(sec, propertyInfo.Name, obj.ToString());
                         }
                     }
                 }
@@ -120,7 +146,21 @@ namespace myzy.Util
             }
         }
     }
-    [AttributeUsage(AttributeTargets.Property)]
+
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+    public class SectionNameAttribute : Attribute
+    {
+        public SectionNameAttribute(string sectionName)
+        {
+            if (string.IsNullOrEmpty(sectionName))
+                throw new NoNullAllowedException("SECTION NAME CAN'T BE NULL.");
+
+            SectionName = sectionName;
+        }
+        public string SectionName { get; }
+    }
+
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
     public class IgnoreSerializeAttribute : Attribute
     {
         
