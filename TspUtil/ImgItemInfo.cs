@@ -55,7 +55,10 @@ namespace TspUtil
             }
         }
 
-
+        public override string ToString()
+        {
+            return IsActived + "," + Des +","+ FnPath +","+ Cs;
+        }
 
         public event PropertyChangedEventHandler PropertyChanged;
 

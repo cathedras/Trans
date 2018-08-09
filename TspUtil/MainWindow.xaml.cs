@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -27,13 +28,13 @@ namespace TspUtil
         public MainWindow()
         {
             InitializeComponent();
-
             this.Loaded += MainWindow_Loaded;
         }
 
         protected override void OnClosed(EventArgs e)
         {
             Vm.SaveDataOnExit();
+            Environment.Exit(0);
             base.OnClosed(e);
         }
 
@@ -68,5 +69,6 @@ namespace TspUtil
         // Using a DependencyProperty as the backing store for Vm.  This enables animation, styling, binding, etc...
         public static readonly DependencyProperty VmProperty =
             DependencyProperty.Register("Vm", typeof(ViewModel), typeof(MainWindow), new PropertyMetadata(new ViewModel()));
+
     }
 }

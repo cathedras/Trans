@@ -20,38 +20,72 @@
                 <ResourceDictionary Source="pack://application:,,,/AgCustom;component/Themes/AgCustomCommon.xaml"/>
                 <ResourceDictionary Source="afx.xaml"/>
             </ResourceDictionary.MergedDictionaries>
-            
         </ResourceDictionary>
     </Window.Resources>
 
-    <Grid Background="{StaticResource CtlBkBrush}" Name="mainGrid">
+    <Grid Background="{StaticResource CtlBkBrush}" Name="mainGrid" IsEnabled="{Binding Vm.PanelUnLock,RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition/>
+            <ColumnDefinition Width="0*"/>
+        </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Menu Grid.Row="0" HorizontalAlignment="Right" Margin="2" Background="{StaticResource CtlBkBrush}">
+        <Menu Grid.Row="0" HorizontalAlignment="Right" Margin="0,2,2,2" Background="{StaticResource CtlBkBrush}" Width="76">
             <MenuItem Header="操作">
                 <MenuItem Header="服务监视" IsCheckable="True"/>
+
             </MenuItem>
             <MenuItem Header="关于"></MenuItem>
         </Menu>
-        
-        <StatusBar Grid.Row="2" Background="{StaticResource CtlBkBrush}" Margin="15,5">
+
+        <StatusBar Grid.Row="2" Background="{StaticResource CtlBkBrush}" Margin="15,5,6,5">
             <StatusBarItem>
                 <WrapPanel>
-                    <TextBlock Text="IP地址 :"></TextBlock>
-                    <TextBlock Text="127.0.0.1"></TextBlock>
+                    <TextBlock Text="服务器:"></TextBlock>
+                    <TextBlock Text="{Binding Vm.IpAddress, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"></TextBlock>
                 </WrapPanel>
             </StatusBarItem>
+
+            <StatusBarItem>
+                <WrapPanel>
+                    <TextBlock Text="："></TextBlock>
+                    <TextBlock Text="{Binding Vm.Port, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"></TextBlock>
+                </WrapPanel>
+            </StatusBarItem>
+            <StatusBarItem>
+                <WrapPanel>
+                    <TextBlock Text="当前客户端:"></TextBlock>
+                    <TextBlock Text="{Binding Vm.CurrentIp, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"></TextBlock>
+                </WrapPanel>
+            </StatusBarItem>
+
+            <StatusBarItem HorizontalAlignment="Center">
+                <WrapPanel>
+                    <TextBlock Text="设备状态："></TextBlock>
+                    <TextBlock Text="{Binding Vm.IsConnected, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"></TextBlock>
+                </WrapPanel>
+            </StatusBarItem>
+
+            <StatusBarItem HorizontalAlignment="Right">
+                <WrapPanel>
+                    <TextBlock Text="发送状态：" VerticalAlignment="Center"></TextBlock>
+                    <ProgressBar Maximum="{Binding Vm.Maximum,RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" Value="{Binding Vm.ProgressData,RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"   HorizontalAlignment="Left" Height="10" Grid.Row="2" VerticalAlignment="Center" Width="150"/>
+                </WrapPanel>
+            </StatusBarItem>
+            <StatusBar>
+                <TextBlock Text="{Binding Vm.ProgressData,RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" Width="24"></TextBlock> %
+            </StatusBar>
             <StatusBarItem HorizontalAlignment="Right">
                 <TextBlock Text="{Binding Vm.SwVersion, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, StringFormat={}VER : {0:}}" MinWidth="80"></TextBlock>
             </StatusBarItem>
         </StatusBar>
 
         <TabControl Grid.Row="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Background="{StaticResource CtlBkBrush}">
-          
+
             <TabItem Header="应用" >
                 <Border VerticalAlignment="Stretch" HorizontalAlignment="Stretch" BorderBrush="Blue" BorderThickness="1">
                     <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
@@ -66,29 +100,28 @@
 
                         <GridSplitter Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" VerticalAlignment="Stretch"  HorizontalAlignment="Right"  Width="2"></GridSplitter>
                         <GridSplitter Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" VerticalAlignment="Top" HorizontalAlignment="Stretch" Height="2"></GridSplitter>
-                        <agCustom:LogItemViewEx Margin="0,2" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" MsgLogItems="{Binding Vm.LogItems, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"></agCustom:LogItemViewEx>
+                        <agCustom:LogItemViewEx Margin="0,2" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" MsgLogItems="{Binding Vm.LogItems, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"/>
 
                         <Grid Grid.Row="0" Grid.Column="0" >
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="*"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="60"></RowDefinition>
                             </Grid.RowDefinitions>
 
-                            <ListView Margin="2" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" 
+                            <ListView Margin="2,2,0,2" HorizontalContentAlignment="Stretch" 
                                   lvcctrl:ListViewLayoutManager.Enabled="True" Name="imgItemCtls"
                                   Background="{StaticResource CtlBkBrush}" ItemsSource="{Binding Vm.ImgItemInfos, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}">
-                               <i:Interaction.Triggers>
+                                <i:Interaction.Triggers>
                                     <i:EventTrigger EventName="SelectionChanged">
-                                        <util:ExInvokeCommandAction Command="{Binding Vm.ImgItemSelectionChangedCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" CommandParameter="{Binding ElementName=imgItemCtls, Path=SelectedItem}">
-                                        </util:ExInvokeCommandAction>
+                                        <util:ExInvokeCommandAction Command="{Binding Vm.ImgItemSelectionChangedCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" CommandParameter="{Binding ElementName=imgItemCtls, Path=SelectedItem}"></util:ExInvokeCommandAction>
                                     </i:EventTrigger>
-                               </i:Interaction.Triggers>
+                                </i:Interaction.Triggers>
                                 <ListView.View>
                                     <GridView>
                                         <GridViewColumn Header="#" lvcctrl:RangeColumn.MinWidth="50">
                                             <GridViewColumn.CellTemplate>
                                                 <DataTemplate>
-                                                    <!--<TextBlock TextAlignment="Center" MinWidth="50" Text="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=ListViewItem}, Path=(ItemsControl.AlternationIndex), Converter={StaticResource IdxDispCvt}}"></TextBlock>-->
                                                     <TextBlock TextAlignment="Center" MinWidth="50"
                                                            Text="{Binding Mode=OneWay, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=ListViewItem}, Converter={StaticResource OrdinalConverter}}" />
                                                 </DataTemplate>
@@ -117,8 +150,8 @@
                                         <GridViewColumn Header="校验和" lvcctrl:RangeColumn.MinWidth="80">
                                             <GridViewColumn.CellTemplate>
                                                 <DataTemplate DataType="{x:Type local:ImgItemInfo}">
-                                                    <TextBlock  TextAlignment="Center" 
-                                                              Text="{Binding Cs, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center" HorizontalAlignment="Stretch"></TextBlock>
+                                                    <TextBox  TextAlignment="Center" 
+                                                              Text="{Binding Cs, UpdateSourceTrigger=PropertyChanged}" Width="60" VerticalAlignment="Center" HorizontalAlignment="Stretch"></TextBox>
                                                 </DataTemplate>
                                             </GridViewColumn.CellTemplate>
                                         </GridViewColumn>
@@ -132,11 +165,10 @@
                                                 </DataTemplate>
                                             </GridViewColumn.CellTemplate>
                                         </GridViewColumn>
-
                                     </GridView>
                                 </ListView.View>
                             </ListView>
-                            
+
                             <UniformGrid Grid.Row="1" Rows="1" Margin="5" Background="{StaticResource CtlBkBrush}">
                                 <UniformGrid.Resources>
                                     <Style TargetType="Button">
@@ -147,22 +179,54 @@
                                 <Button Command="{Binding Vm.OpenFdCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">打开</Button>
                                 <Button Command="{Binding Vm.SendItemsCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">发送</Button>
                             </UniformGrid>
+                            <UniformGrid Grid.Row="2">
+                                <ListBox Background="{StaticResource CtlBkBrush}"
+                                         ItemsSource="{Binding Vm.ViewClients, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         Name="Item">
 
+                                    <i:Interaction.Triggers>
+                                        <i:EventTrigger EventName="SelectionChanged">
+                                            <util:ExInvokeCommandAction Command="{Binding Vm.SelectionChangedCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" CommandParameter="{Binding ElementName=Item, Path=SelectedItem}">
+                                            </util:ExInvokeCommandAction>
+                                        </i:EventTrigger>
+                                    </i:Interaction.Triggers>
+
+
+                                    <ListBox.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel IsItemsHost="True"></WrapPanel>
+                                        </ItemsPanelTemplate>
+                                    </ListBox.ItemsPanel>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid>
+                                                <TextBlock Grid.Column="0" Text="{Binding ClientId}"></TextBlock>
+                                                <TextBlock Grid.Column="1" Text="{Binding ClientIp}"></TextBlock>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="50"></ColumnDefinition>
+                                                    <ColumnDefinition Width="200"></ColumnDefinition>
+                                                </Grid.ColumnDefinitions>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </UniformGrid>
                         </Grid>
-                        <Grid  Grid.Column="1" Grid.Row="0" Background="{StaticResource CtlBkBrush}">
+                        <Grid  Grid.Column="1" Grid.Row="0" HorizontalAlignment="Stretch" Background="{StaticResource CtlBkBrush}">
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto" MinHeight="30"/>
+                                <RowDefinition/>
                             </Grid.RowDefinitions>
                             <TextBlock Text="{Binding Vm.ActiveFn, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" FontSize="16" Margin="5" FontStyle="Italic" Foreground="DeepSkyBlue">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Visibility" Value="Visible"/>
-                                       <Style.Triggers>
-                                           <DataTrigger Binding="{Binding Text, RelativeSource={RelativeSource Self}, Converter={StaticResource IsStringEmptyConverter}}" Value="True">
-                                               <Setter Property="Visibility" Value="Hidden"/>
-                                           </DataTrigger>
-                                       </Style.Triggers>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Text, RelativeSource={RelativeSource Self}, Converter={StaticResource IsStringEmptyConverter}}" Value="True">
+                                                <Setter Property="Visibility" Value="Hidden"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
                                     </Style>
                                 </TextBlock.Style>
                             </TextBlock>
@@ -171,7 +235,6 @@
                                 <Image Source="{Binding Vm.ImgSource, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"
                                    Stretch="Uniform"></Image>
                             </Grid>
-
                         </Grid>
                     </Grid>
                 </Border>
@@ -186,11 +249,12 @@
                         </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <Grid.Resources>
                             <Style TargetType="TextBlock">
-                                <Setter Property="Margin" Value="5"></Setter>
+                                <Setter Property="Margin" Value="2"></Setter>
                                 <Setter Property="Width" Value="80"></Setter>
                                 <Setter Property="VerticalAlignment" Value="Center"/>
                             </Style>
@@ -200,7 +264,7 @@
                                 <Setter Property="VerticalAlignment" Value="Center"/>
                             </Style>
                             <Style TargetType="TextBox">
-                                <Setter Property="Margin" Value="5"></Setter>
+                                <Setter Property="Margin" Value="2"></Setter>
                                 <Setter Property="Width" Value="200"></Setter>
                                 <Setter Property="VerticalAlignment" Value="Center"/>
                             </Style>
@@ -210,143 +274,176 @@
                                 <Setter Property="VerticalAlignment" Value="Center"/>
                             </Style>
                         </Grid.Resources>
-                        <StackPanel>
-                            <!--
-                      <Expander Header="====" IsExpanded="True">
-                          <Grid>
-                              <Grid.RowDefinitions>
-                                  <RowDefinition Height="Auto"/>
-                                  <RowDefinition Height="Auto"/>
-                              </Grid.RowDefinitions>
-                              <Grid.ColumnDefinitions>
-                                  <ColumnDefinition Width="Auto"/>
-                                  <ColumnDefinition Width="Auto"/>
-                              </Grid.ColumnDefinitions>
-                              <TextBlock Grid.Column="0" Grid.Row="0" Text="X: "></TextBlock>
-                                <TextBlock Grid.Column="0" Grid.Row="1" Text="Y: "></TextBlock>
-                            </Grid>
-                      </Expander>
-                      -->
-                            <Expander Header="预期分辨率" IsExpanded="True">
-                                <Grid>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Grid.Row="0" Text="X: "></TextBlock>
-                                    <TextBlock Grid.Column="0" Grid.Row="1" Text="Y: "></TextBlock>
-                                    <xctk:IntegerUpDown Grid.Column="1" Grid.Row="0" Minimum="0" Value="{Binding Vm.ExpPixWidth, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}"></xctk:IntegerUpDown>
-                                    <xctk:IntegerUpDown Grid.Column="1" Grid.Row="1" Minimum="0"  Value="{Binding Vm.ExpPixHeight, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}"></xctk:IntegerUpDown>
-                                </Grid>
-                            </Expander>
+                        <StackPanel Grid.Row="0" Grid.Column="0">
+                            <GroupBox>
+                                <GroupBox.Header>
+                                    <CheckBox IsChecked="{Binding Vm.IsNetWorkSend, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">网络发送</CheckBox>
+                                </GroupBox.Header>
+                                <StackPanel IsEnabled="{Binding Vm.IsNetWorkSend, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">
+                                    <Expander Header="预期分辨率" IsExpanded="True">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Grid.Row="0" Text="X: "></TextBlock>
+                                            <TextBlock Grid.Column="0" Grid.Row="1" Text="Y: "></TextBlock>
+                                            <xctk:IntegerUpDown Grid.Column="1" Grid.Row="0" Minimum="0" Value="{Binding Vm.ExpPixWidth, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}"></xctk:IntegerUpDown>
+                                            <xctk:IntegerUpDown Grid.Column="1" Grid.Row="1" Minimum="0"  Value="{Binding Vm.ExpPixHeight, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}"></xctk:IntegerUpDown>
+                                        </Grid>
+                                    </Expander>
+                                    <Expander Header="字节序" IsExpanded="True">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="50"/>
+                                                <ColumnDefinition Width="110"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <Grid.Resources>
+                                                <Style TargetType="ItemsControl">
+                                                    <Setter Property="ItemTemplate">
+                                                        <Setter.Value>
+                                                            <DataTemplate DataType="local:MaskForArgbItem">
+                                                                <Grid Margin="2,10" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="Auto"/>
+                                                                        <ColumnDefinition Width="Auto"/>
+                                                                        <ColumnDefinition Width="Auto"/>
+                                                                    </Grid.ColumnDefinitions>
+
+                                                                    <Grid.RowDefinitions>
+                                                                        <RowDefinition Height="Auto"/>
+                                                                        <RowDefinition Height="Auto"/>
+                                                                    </Grid.RowDefinitions>
 
 
-                            <Expander Header="字节序" IsExpanded="True">
-                                <Grid>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
+                                                                    <TextBox Grid.Row="0" Grid.Column="0" Width="100"  Text="{Binding ExpRGBA}" VerticalAlignment="Center" HorizontalAlignment="Left"></TextBox>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
 
-                                    <Grid.Resources>
+                                                    <Setter Property="ItemsPanel">
+                                                        <Setter.Value>
+                                                            <ItemsPanelTemplate>
+                                                                <UniformGrid Rows="1"></UniformGrid>
+                                                            </ItemsPanelTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
 
-                                        <Style TargetType="ItemsControl">
-                                            <Setter Property="ItemTemplate">
-                                                <Setter.Value>
-                                                    <DataTemplate DataType="local:MaskForArgbItem">
-                                                        <Grid Margin="2,10" VerticalAlignment="Center" HorizontalAlignment="Center">
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="Auto"/>
-                                                                <ColumnDefinition Width="Auto"/>
-                                                                <ColumnDefinition Width="Auto"/>
-                                                                <ColumnDefinition Width="Auto"/>
-                                                            </Grid.ColumnDefinitions>
+                                            </Grid.Resources>
 
-                                                            <Grid.RowDefinitions>
-                                                                <RowDefinition Height="Auto"/>
-                                                                <RowDefinition Height="Auto"/>
-                                                            </Grid.RowDefinitions>
-
-                                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="b" VerticalAlignment="Center" HorizontalAlignment="Center"></TextBlock>
-                                                            <TextBlock  Grid.Row="0" Grid.Column="1"  Text="g" VerticalAlignment="Center" HorizontalAlignment="Center"></TextBlock>
-                                                            <TextBlock  Grid.Row="0" Grid.Column="2"  Text="r" VerticalAlignment="Center" HorizontalAlignment="Center"></TextBlock>
-                                                            <TextBlock  Grid.Row="0" Grid.Column="3"  Text="a" VerticalAlignment="Center" HorizontalAlignment="Center"></TextBlock>
-
-                                                            <RadioButton  Grid.Row="1" Grid.Column="0"  IsChecked="{Binding IsB}" VerticalAlignment="Center" HorizontalAlignment="Center"></RadioButton>
-                                                            <RadioButton Grid.Row="1" Grid.Column="1" IsChecked="{Binding IsG}" VerticalAlignment="Center" HorizontalAlignment="Center"></RadioButton>
-                                                            <RadioButton Grid.Row="1" Grid.Column="2" IsChecked="{Binding IsR}" VerticalAlignment="Center" HorizontalAlignment="Center"></RadioButton>
-                                                            <RadioButton  Grid.Row="1" Grid.Column="3" IsChecked="{Binding IsA}" VerticalAlignment="Center" HorizontalAlignment="Center"></RadioButton>
-                                                        </Grid>
-                                                    </DataTemplate>
-                                                </Setter.Value>
-                                            </Setter>
-
-                                            <Setter Property="ItemsPanel">
-                                                <Setter.Value>
-                                                    <ItemsPanelTemplate>
-                                                        <UniformGrid Rows="1"></UniformGrid>
-                                                    </ItemsPanelTemplate>
-                                                </Setter.Value>
-                                            </Setter>
-                                        </Style>
-
-                                    </Grid.Resources>
-
-                                    <TextBlock Grid.Column="0" Grid.Row="0" Text="奇行: "></TextBlock>
-                                    <TextBlock Grid.Column="0" Grid.Row="1" Text="偶行: "></TextBlock>
+                                            <TextBlock Grid.Column="0" Grid.Row="0" Text="奇行: "></TextBlock>
+                                            <TextBlock Grid.Column="0" Grid.Row="1" Text="偶行: "></TextBlock>
 
 
-                                    <ItemsControl Grid.Column="1" Grid.Row="0" VerticalAlignment="Center" ItemsSource="{Binding Vm.OddMaskArgb, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}">
-                                        
-                                    </ItemsControl>
+                                            <TextBox Grid.Column="1" Grid.Row="0" Width="100" VerticalAlignment="Center" Text="{Binding Vm.OddOffset, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0:D1}}"></TextBox>
+                                            <ItemsControl Grid.Column="2" Grid.Row="0" VerticalAlignment="Center" ItemsSource="{Binding Vm.OddMaskArgb, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}"></ItemsControl>
+                                            <TextBox Grid.Column="1" Grid.Row="1" Width="100" VerticalAlignment="Center" Text="{Binding Vm.EvenOffset, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0:D1}}"></TextBox>
+                                            <ItemsControl Grid.Column="2" Grid.Row="1" VerticalAlignment="Center" ItemsSource="{Binding Vm.EvenMaskArgb, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}"></ItemsControl>
 
-                                    <ItemsControl Grid.Column="1" Grid.Row="1"  VerticalAlignment="Center" ItemsSource="{Binding Vm.EvenMaskArgb, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}">
-                                      
-                                    </ItemsControl>
-
-                                </Grid>
-                            </Expander>
-
-                            <Expander Header="空余填补" IsExpanded="True">
-                                <Grid>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Grid.Row="0" Text="位置"></TextBlock>
-                                    <TextBlock Grid.Column="0" Grid.Row="1" Text="数据 "></TextBlock>
-                                    <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Source={StaticResource PadLocModeProvider}}" 
+                                        </Grid>
+                                    </Expander>
+                                    <Expander Header="空余填补" IsExpanded="True">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Grid.Row="0" Text="位置"></TextBlock>
+                                            <TextBlock Grid.Column="0" Grid.Row="1" Text="数据 "></TextBlock>
+                                            <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Source={StaticResource PadLocModeProvider}}" 
                                               SelectedValue="{Binding Vm.PadLoc, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"
                                               SelectedValuePath="Val"
                                               DisplayMemberPath="Des">
+                                            </ComboBox>
+                                            <xctk:WatermarkTextBox Grid.Column="1" Grid.Row="1" Watermark="FF" Text="{Binding Vm.PadStr, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}">
+                                                <i:Interaction.Behaviors>
+                                                    <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
+                                                </i:Interaction.Behaviors>
+                                            </xctk:WatermarkTextBox>
+                                        </Grid>
+                                    </Expander>
+                                    <Expander Header="其他设置" IsExpanded="True">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="30px"></RowDefinition>
+                                                <RowDefinition Height="30px"></RowDefinition>
+                                            </Grid.RowDefinitions>
+                                            <CheckBox VerticalAlignment="Center" Grid.Column="1" Grid.Row="0" IsChecked="{Binding Vm.IsInverse, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">上下翻转图片</CheckBox>
+                                            <CheckBox VerticalAlignment="Center" Grid.Column="1" Grid.Row="1" IsChecked="{Binding Vm.UsinSimData, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">使用模拟数据(必须选择一张图片获取分辨率)</CheckBox>
+                                        </Grid>
+                                    </Expander>
+                                </StackPanel>
+                            </GroupBox>
+                        </StackPanel>
+                        <StackPanel Grid.Row="0" Grid.Column="1" HorizontalAlignment="Left">
+                            <GroupBox>
+                                <GroupBox.Header>
+                                    <CheckBox IsChecked="{Binding Vm.IsSerialSend,RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">串口发送</CheckBox>
+                                </GroupBox.Header>
+                                <StackPanel IsEnabled="{Binding Vm.IsSerialSend,RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">
+                                    <Expander Header="串口设置" IsExpanded="True">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="30px"></RowDefinition>
+                                                <RowDefinition Height="30px"></RowDefinition>
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                                                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="串口号：" Grid.Row="0" Grid.Column="0"></TextBlock>
+                                            <TextBlock Text="波特率：" Grid.Row="1" Grid.Column="0"></TextBlock>
+                                            <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Vm.SerialComs, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" 
+                                              SelectedValue="{Binding Vm.SelectCom, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"
+                                              SelectedValuePath="Val"
+                                              DisplayMemberPath="Des"></ComboBox>
+                                            <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Vm.SerialSpeed, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" 
+                                              SelectedValue="{Binding Vm.SelectSpeed, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"
+                                              SelectedValuePath="Val"
+                                              DisplayMemberPath="Des"></ComboBox>
+                                        </Grid>
+                                    </Expander>
+                                    <Expander Header="空余填补" IsExpanded="True">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"></RowDefinition>
+                                                <RowDefinition Height="Auto"></RowDefinition>
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                                                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="数据："></TextBlock>
+                                            <xctk:WatermarkTextBox Grid.Row="0" Grid.Column="1" Watermark="FF" Text="{Binding Vm.PadStr, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,-206,0">
+                                                <i:Interaction.Behaviors>
+                                                    <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
+                                                </i:Interaction.Behaviors>
+                                            </xctk:WatermarkTextBox>
+                                        </Grid>
                                         
-                                    </ComboBox>
-                                    <xctk:WatermarkTextBox Grid.Column="1" Grid.Row="1" Watermark="FF" Text="{Binding Vm.PadStr, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}">
-
-                                        <i:Interaction.Behaviors>
-                                            <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
-                                        </i:Interaction.Behaviors>
-                                       
-                                    </xctk:WatermarkTextBox>
-                                </Grid>
-                            </Expander>
+                                    </Expander>
+                                </StackPanel>
+                            </GroupBox>
                         </StackPanel>
                     </Grid>
                 </ScrollViewer>
             </TabItem>
-
         </TabControl>
     </Grid>
 </Window>

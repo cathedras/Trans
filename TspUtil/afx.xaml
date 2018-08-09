@@ -14,5 +14,4 @@
             <x:Type TypeName="local:PadLoc" />
         </ObjectDataProvider.MethodParameters>
     </ObjectDataProvider>
-
 </ResourceDictionary>

@@ -103,11 +103,6 @@ namespace myzy.Util
             }
         }
 
-        public void Refresh()
-        {
-            CalcStatics();
-        }
-
         private static readonly ILog _log = LogManager.GetLogger("exlog");
 
         public void AddSample(int channelIdx, TestResult result)

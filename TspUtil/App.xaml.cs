@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using ErrorHandler;
+using log4net;
 using myzy.AgCustom;
 using myzy.Util;
 
@@ -23,20 +24,6 @@ namespace TspUtil
             ExceptionHandler.AddHandler(false, false, false);
             NativeDllHelper.PreLoadNativeDlls();
         }
-
-        protected override void OnStartup(StartupEventArgs e)
-        {
-            //Current.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            //var login = new LoginWnd();
-            //login.ShowDialog();
-            //Current.ShutdownMode = ShutdownMode.OnMainWindowClose;
-
-            var mainWnd = new MainWindow();
-            Current.MainWindow = mainWnd;
-            Current.MainWindow?.Show();
-
-            base.OnStartup(e);
-        }
     }
 
     public class TspStartUp
@@ -44,15 +31,26 @@ namespace TspUtil
         [STAThread]
         public static void Main(string[] args)
         {
+
             try
             {
-                var app = new App();
-                var wrap = new SingleInstanceApplicationWrapper(app);
+                var wrap = new SingleInstanceApplicationWrapper();
+                var wnd = new MainWindow();
+                wrap.SetMainWnd(wnd);
+
+                wrap.OnPreLoadEvent += () =>
+                {
+                    ExceptionHandler.AddHandler(false, false, false);
+                    NativeDllHelper.PreLoadNativeDlls();
+
+                    //var login = new LoginWnd();
+                    //login.ShowDialog();
+                };
                 wrap.Run(args);
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.Message);
+                Console.WriteLine(e.ToString());
             }
         }
     }

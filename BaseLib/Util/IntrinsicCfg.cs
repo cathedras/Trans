@@ -8,7 +8,7 @@ namespace myzy.Util
 {
     public abstract class IntrinsicCfg
     {
-        protected  string _section = "CFG";
+        protected  string _section = "cfg";
         /// <summary>
         /// INI 配置文档
         /// </summary>
@@ -130,9 +130,9 @@ namespace myzy.Util
                         var sec = _section;
                         if (attr2.Any())
                         {
-                            sec = ((SectionNameAttribute) attr2[0]).SectionName;
+                            sec = ((SectionNameAttribute)attr2[0]).SectionName;
                         }
-                        
+
                         if (!attr.Any())
                         {
                             ini.WriteString(sec, propertyInfo.Name, obj.ToString());
@@ -146,7 +146,6 @@ namespace myzy.Util
             }
         }
     }
-
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
     public class SectionNameAttribute : Attribute
     {
@@ -159,8 +158,7 @@ namespace myzy.Util
         }
         public string SectionName { get; }
     }
-
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Property)]
     public class IgnoreSerializeAttribute : Attribute
     {
         

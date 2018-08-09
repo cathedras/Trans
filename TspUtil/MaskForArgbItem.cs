@@ -6,55 +6,28 @@ namespace TspUtil
 {
     public class MaskForArgbItem : INotifyPropertyChanged
     {
-        private bool _isA;
-        private bool _isR;
-        private bool _isG;
-        private bool _isB;
+        private string _expRGBA ;
 
-        public bool IsA
+        public MaskForArgbItem()
         {
-            get => _isA;
+        }
+
+        public MaskForArgbItem(string expRGBA)
+        {
+            _expRGBA = expRGBA;
+        }
+
+
+        public string ExpRGBA
+        {
+            get => _expRGBA;
             set
             {
-                if (value == _isA) return;
-                _isA = value;
+                if (value==_expRGBA)return;
+                _expRGBA = value;
                 OnPropertyChanged();
             }
         }
-
-        public bool IsR
-        {
-            get => _isR;
-            set
-            {
-                if (value == _isR) return;
-                _isR = value;
-                OnPropertyChanged();
-            }
-        }
-
-        public bool IsG
-        {
-            get => _isG;
-            set
-            {
-                if (value == _isG) return;
-                _isG = value;
-                OnPropertyChanged();
-            }
-        }
-
-        public bool IsB
-        {
-            get => _isB;
-            set
-            {
-                if (value == _isB) return;
-                _isB = value;
-                OnPropertyChanged();
-            }
-        }
-
 
         public event PropertyChangedEventHandler PropertyChanged;
 

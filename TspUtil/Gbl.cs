@@ -1,4 +1,8 @@
 ﻿using myzy.Util;
+using System;
+using System.Net;
+using System.Net.Sockets;
+using System.Reflection;
 
 namespace TspUtil
 {
@@ -8,26 +12,62 @@ namespace TspUtil
         {
             ClientHeight = 640;
             ClientWidth = 1024;
+            ExpByteWidth = 828;
+            ExpByteHeight = 1792;
+            OddRgbA = "r0g0b0";
+            EvenRgbA = "r0g0b0";
+            OddOffset = 0;
+            EvenOffset = 0;
 
-            ExpPixWidth = 828;
-            ExpPixHeight = 1792;
-
-            OddRgbA = "BGR";
-            EvenRgbA = "BGR";
             PadStr = "00";
             PadLoc = $"{TspUtil.PadLoc.Left}";
-            MaskCount = 4;
+            SelectCom = "COM1";
+            SelectSpeed = "115200";
+            SelectDataBits = "8";
+            SelectParity = "none";
+            SelectStopBits = 1;
+            TotalTime = 40;
+            IntevaTime = 5;
+
+            BinFileName = "";
+            IsSerialSend = false;
+            IsNetWorkSend = false;
+            IsEthSim = false;
+            UsingSimData = false;
+            IpAddress = "127.0.0.1";
+            Port = 2113;
+            IsInverse = false;
+            //Todo
         }
-        public int ClientWidth { get; set; }
-        public int ClientHeight  { get; set; }
 
-        public int  ExpPixWidth { get; set; }
-        public int ExpPixHeight { get; set; }
-        public string OddRgbA { get; set; }
-        public string EvenRgbA { get; set; }
-        public string PadStr { get; set; }
-        public string PadLoc { get; set; }
+        [SectionName("PIC")] public int ClientWidth { get; set; }
+        [SectionName("PIC")] public int ClientHeight { get; set; }
+        [SectionName("PIC")] public int ExpByteWidth { get; set; }
+        [SectionName("PIC")] public int ExpByteHeight { get; set; }
 
-        public int MaskCount { get; set; }
+        [SectionName("PIC")] public string OddRgbA { get; set; }
+        [SectionName("PIC")] public string EvenRgbA { get; set; }
+        [SectionName("PIC")] public int OddOffset { get;  set; }
+        [SectionName("PIC")] public int EvenOffset { get;  set; }
+        [SectionName("PIC")] public string PadStr { get; set; }
+        [SectionName("PIC")] public string PadLoc { get; set; }
+
+
+        [SectionName("PCOMM")] public string SelectCom { get; set; }
+        [SectionName("PCOMM")] public string SelectSpeed { get; set; }
+        [SectionName("PCOMM")] public string SelectDataBits { get; set; }
+        [SectionName("PCOMM")] public string SelectParity { get; set; }
+        [SectionName("PCOMM")] public int SelectStopBits { get; set; }
+        [SectionName("PCOMM")] public int TotalTime { get; set; }
+        [SectionName("PCOMM")] public int IntevaTime { get; set; }
+
+        public string BinFileName { get; set; }
+        public bool IsSerialSend { get; set; }
+        public bool IsNetWorkSend { get; set; }
+        public bool IsEthSim { get; set; }
+        public bool UsingSimData { get; set; }
+        [SectionName("NETWORK")] public string IpAddress { get; set; }
+        [SectionName("NETWORK")] public int Port { get; set; }
+        public bool IsInverse { get; set; }
     }
 }

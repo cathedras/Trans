@@ -62,7 +62,7 @@ namespace myzy.Util
             return CmdState.Success;
         }
 
-        private readonly int _innerTimeout = 200;
+        private readonly int _innerTimeout = 1000;
 
         private readonly ConcurrentQueue<string> _revQueue = new ConcurrentQueue<string>();
 
