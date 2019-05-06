@@ -39,7 +39,7 @@ namespace TspUtil
         CancellationTokenSource CancelToken
         {
             get;
-            set;
+            //set;
         }
         bool IsReceiveNg
         {

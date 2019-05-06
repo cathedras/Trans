@@ -28,6 +28,7 @@ namespace TspUtil
         public Serial(Pcomm pcom)
         {
             Pcom = pcom;
+            _cancelToken = new CancellationTokenSource();
         }
 
         public TcpClient Sock
@@ -70,11 +71,11 @@ namespace TspUtil
         public CancellationTokenSource CancelToken
         {
             get => _cancelToken;
-            set
-            {
-                if (_cancelToken == value) return;
-                _cancelToken = value;
-            }
+            //set
+            //{
+            //    if (_cancelToken == value) return;
+            //    _cancelToken = value;
+            //}
         }
         public bool IsReceiveNg
         {
@@ -144,6 +145,7 @@ namespace TspUtil
         public NetClient(TcpClient sock)
         {
             Sock = sock;
+            _cancelToken = new CancellationTokenSource();
         }
 
         public TcpClient Sock
@@ -186,10 +188,10 @@ namespace TspUtil
         public CancellationTokenSource CancelToken
         {
             get => _cancelToken;
-            set
-            {
-                CancelToken = value;
-            }
+            //set
+            //{
+            //    CancelToken = value;
+            //}
         }
         public bool IsReceiveNg
         {

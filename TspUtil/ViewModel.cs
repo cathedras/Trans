@@ -23,6 +23,8 @@ using System.Text;
 using System.Collections.Concurrent;
 using log4net;
 using System.IO.Ports;
+using System.Windows.Threading;
+
 namespace TspUtil
 {
     public class ViewModel : INotifyPropertyChanged
@@ -65,9 +67,8 @@ namespace TspUtil
         private bool _isSerialSend = false;
         private bool _isNetWorkSend = false;
 
-        private int _picIndex = 0;
         //clients' attribute
-        private ConcurrentDictionary<int, IDev> _clientRunList = new ConcurrentDictionary<int, IDev>();
+        private readonly ConcurrentDictionary<int, IDev> _clientRunList = new ConcurrentDictionary<int, IDev>();
         static VmParam _vmParam = new VmParam();
         SendClientConfig _configure = new SendClientConfig(VmParam);
         private int _selectClientId = 0;
@@ -351,15 +352,7 @@ namespace TspUtil
             }
         }
 
-        public int PicIndex
-        {
-            get => _picIndex;
-            set
-            {
-                if (value == _picIndex) return;
-                _picIndex = value;
-            }
-        }
+
         public bool IsInverse
         {
             get => _isInverse;
@@ -396,24 +389,23 @@ namespace TspUtil
         /// <param name="level"></param>
         public void AddLogMsg(string msg, int level = 0)
         {
-            Application.Current?.Dispatcher.Invoke(() =>
+           var dispatcher =  Application.Current?.Dispatcher;
+            if (dispatcher != null)
             {
-                LogItems.Add(new LogItem()
+                if (dispatcher.CheckAccess())
                 {
-                    DateTime = DateTime.Now,
-                    Info = msg,
-                    Level = level
-                });
-            });
-        }
-        /// <summary>
-        /// Add log to log txt document file,if you need, you can use it in anywhere place.
-        /// </summary>
-        /// <param name="message"></param>
-        public static void LogPrint(string message)
-        {
-            ILog _log = LogManager.GetLogger("exlog");
-            _log.Debug("{0}" + message);
+                    LogItems.Add(new LogItem()
+                    {
+                        DateTime = DateTime.Now,
+                        Info = msg,
+                        Level = level
+                    });
+                }
+                else
+                {
+                    dispatcher.Invoke(() => { AddLogMsg(msg, level); });
+                }
+            }
         }
         /// <summary>
         /// Save the ini file.
@@ -604,7 +596,6 @@ namespace TspUtil
             }
             return sendState;
         }
-        private int _taskId = 0;
         /// <summary>
         /// Send all bmpphoto by network. 
         /// </summary>
@@ -614,88 +605,79 @@ namespace TspUtil
             byte[] store = StringToByteArray("store");//保存指令
             if (IsConnected)
             {
-                if (ImgItemInfos.Any(p => p.IsActived))
+                foreach (var dev in ClientRunList)
                 {
-                    new Task(new Action(() =>
+                    dev.Value.HeaderList = new List<byte>();
+                    dev.Value.FinalList = new List<byte>();
+                }
+
+                var tsks = ClientRunList.Select(pair => Task.Factory.StartNew(() =>
+                {
+                    var currentSockId = pair.Key;
+
+                    if (!DataSend(erase, currentSockId))
                     {
-                        int currentSockId = 0;
-                        if (!IsEthSim)
+                        AddLogMsg($"erase指令发送失败, {currentSockId}");
+                    }
+                    else
+                    {
+                        for (int i = 0; i < ImgItemInfos.Count; i++)
                         {
-                            currentSockId = SelectClientId == _taskId ? SelectClientId : _taskId;
-                        }
-                        else
-                        {
-                            currentSockId = _taskId;
-                        }
 
-                        var ct = ClientRunList[currentSockId].CancelToken.Token;
-                        _taskId++;
-                        if (!DataSend(erase, currentSockId))
-                        {
-                            AddLogMsg("erase指令发送失败");
-                        }
-                        else
-                        {
-                            for (int i = 0; i < ImgItemInfos.Count; i++)
+                            if (ImgItemInfos[i].IsActived)
                             {
-                                PicIndex = i;
-                                if (ImgItemInfos[i].IsActived)
+                                if (!ActiveImgItem(ImgItemInfos[i], currentSockId))
                                 {
-                                    if (!ActiveImgItem(ImgItemInfos[i], currentSockId))
-                                    {
-                                        AddLogMsg("解析失败！");
-                                        break;
-                                    }
-                                    //data analyze
-                                    if (!DataSend(ClientRunList[currentSockId].HeaderList.ToArray(), ClientRunList[currentSockId].HeaderList.Count, currentSockId))
-                                    {
-                                        AddLogMsg("图片头发送失败，请重新发送");
-                                        break;
-                                    }
-                                    else if (!DataSend(ClientRunList[currentSockId].FinalList.ToArray(), 1024, currentSockId))
-                                    {
-                                        AddLogMsg("图片数据发送失败，请重新发送");
-                                        break;
-                                    }
-                                    else
-                                    {
-                                        //picoff
-                                        byte[] picoff = StringToByteArray("picoff");
-                                        List<byte> Checksum = new List<byte>();
-                                        Checksum.AddRange(DataBmpAlg.HexStringToByteArray(ImgItemInfos[i].Cs));
-
-                                        byte[] send = new byte[Checksum.ToArray().Length + picoff.Length];
-                                        Array.Copy(picoff, 0, send, 0, 6);
-                                        Array.Copy(Checksum.ToArray(), 0, send, picoff.Length, Checksum.ToArray().Length);
-                                        if (!DataSend(send, send.Length, currentSockId))
-                                        {
-                                            AddLogMsg("pioff发送失败，结尾发送失败请重新发送");
-                                            break;
-                                        }
-                                        if (!DataSend(store, currentSockId))
-                                        {
-                                            AddLogMsg("指令发送失败，请重新发送");
-                                            break;
-                                        }
-                                        AddLogMsg("图片发送完成,总共发送字节数：" + ClientRunList[currentSockId].LmgLenCount);
-                                        ClientRunList[currentSockId].LmgLenCount = 0;
-                                        PanelUnLock = true;
-                                    }
+                                    AddLogMsg("解析失败！");
+                                }
+                                //data analyze
+                                else if (!DataSend(ClientRunList[currentSockId].HeaderList.ToArray(), ClientRunList[currentSockId].HeaderList.Count, currentSockId))
+                                {
+                                    AddLogMsg("图片头发送失败，请重新发送");
+                                }
+                                else if (!DataSend(ClientRunList[currentSockId].FinalList.ToArray(), 1024, currentSockId))
+                                {
+                                    AddLogMsg("图片数据发送失败，请重新发送");
                                 }
                                 else
                                 {
-                                    AddLogMsg("无图片被选中，无法解析");
-                                    break;
+                                    //picoff
+                                    byte[] picoff = StringToByteArray("picoff");
+                                    List<byte> Checksum = new List<byte>();
+                                    Checksum.AddRange(DataBmpAlg.HexStringToByteArray(ImgItemInfos[i].Cs));
+
+                                    byte[] send = new byte[Checksum.ToArray().Length + picoff.Length];
+                                    Array.Copy(picoff, 0, send, 0, 6);
+                                    Array.Copy(Checksum.ToArray(), 0, send, picoff.Length, Checksum.ToArray().Length);
+                                    if (!DataSend(send, send.Length, currentSockId))
+                                    {
+                                        AddLogMsg("pioff发送失败，结尾发送失败请重新发送");
+                                    }
+                                    else if (!DataSend(store, currentSockId))
+                                    {
+                                        AddLogMsg("指令发送失败，请重新发送");
+                                    }
+                                    else
+                                    {
+                                        AddLogMsg("图片发送完成,总共发送字节数：" + ClientRunList[currentSockId].LmgLenCount);
+                                        ClientRunList[currentSockId].LmgLenCount = 0;
+                                        ImgItemInfos[i].ImgOpState = ImgOpState.Success;
+                                    }
                                 }
+
+                                if (ImgItemInfos[i].ImgOpState == ImgOpState.None)
+                                    ImgItemInfos[i].ImgOpState = ImgOpState.Fail;
+                            }
+                            else
+                            {
+                                AddLogMsg("无图片被选中，无法解析");
+                                break;
                             }
                         }
-                        Thread.Sleep(10);
-                    }), ClientRunList[_taskId].CancelToken.Token).Start();
-                }
-                else
-                {
-                    AddLogMsg("没有图片被选中，请选择至少一副图片来发送");
-                }
+                    }
+                }));
+
+                Task.WaitAll(tsks.ToArray());
             }
             else
             {
@@ -893,7 +875,7 @@ namespace TspUtil
             }
             catch (Exception ex)
             {
-                LogPrint("网络客户端获取错误："+ex.ToString());
+                AddLogMsg("网络客户端获取错误："+ex.ToString());
             }
             return ipaddress;
         }
@@ -1008,9 +990,9 @@ namespace TspUtil
             Configure.PcomConfigure();
             _serial = new Serial(Configure.VmParam.Pcom)
             {
-                CancelToken = new CancellationTokenSource()
+               // CancelToken = new CancellationTokenSource()
             };
-            LogPrint("串口打开成功");
+            AddLogMsg("串口打开成功");
             Task.Factory.StartNew(new Action(() =>
             {
                 List<string> strList = new List<string>();
@@ -1029,7 +1011,7 @@ namespace TspUtil
             }), _serial.CancelToken.Token);
         }
 
-        private bool ActiveBinItem(ImgItemInfo imgItem)
+        private bool ActiveBinItem(ImgItemInfo imgItem, bool dataProcess = true)
         {
             ActiveFn = string.Empty;
             byte[] oriBytes = null;
@@ -1040,33 +1022,40 @@ namespace TspUtil
             fs.Read(oriBytes, 0, oriBytes.Length);
             fs.Close();
 
-            Stopwatch watch = new Stopwatch();
-            AddLogMsg("解析任务:" + imgItem.Des);
-            watch.Start();
-            var data = new DataBmpAlg(_gbl, oriBytes, OddMaskArgb[0], EvenMaskArgb[0], PadLoc);
-            if (_serial != null)
+            if (dataProcess)
             {
-                _serial.FinalList = data.FinalData;
+                Stopwatch watch = new Stopwatch();
+                AddLogMsg("解析任务:" + imgItem.Des);
+                watch.Start();
+                var data = new DataBmpAlg(_gbl, oriBytes, OddMaskArgb[0], EvenMaskArgb[0], PadLoc);
+                if (_serial != null)
+                {
+                    _serial.FinalList = data.FinalData;
+                }
+                else
+                {
+                    AddLogMsg("没有serial对象");
+                }
+
+                watch.Stop();
+                AddLogMsg("解析完成用时" + watch.ElapsedMilliseconds);
             }
-            else
-            {
-                LogPrint("没有serial对象");
-            }
-            watch.Stop();
-            AddLogMsg("解析完成用时" + watch.ElapsedMilliseconds);
+
             ActiveFn = imgItem.FnPath;
             return true;
         }
 
 
 
-
+        private SemaphoreSlim _slim = new SemaphoreSlim(1);
         /// <summary>
         /// analyze the picture
         /// </summary>
-        private bool ActiveImgItem(ImgItemInfo imgItem, int currentTaskId)
+        private bool ActiveImgItem(ImgItemInfo imgItem, int currentTaskId, bool dataProcess = true)
         {
+            bool res = false;
             Debug.Assert(imgItem != null);
+            _slim.Wait(Timeout.Infinite);
             ActiveFn = string.Empty;
             try
             {
@@ -1089,31 +1078,42 @@ namespace TspUtil
                 fs.Read(oriBytes, 0, oriBytes.Length);
                 fs.Close();
 
-                //start monitors the picture analyze task
-                Stopwatch watch = new Stopwatch();
-                AddLogMsg("解析任务:" + imgItem.Des);
-                watch.Start();
-                var data = new DataBmpAlg(_gbl, oriBytes, OddMaskArgb[0], EvenMaskArgb[0], PadLoc);
-                if (ClientRunList.Count != 0)
+                if (dataProcess)
                 {
-                    ClientRunList[currentTaskId].FinalList = data.FinalData;
-                    ClientRunList[currentTaskId].HeaderList.AddRange(CreateHeadData(PicIndex, data.FinalData.Count, imgItem.Des));
+                    //start monitors the picture analyze task
+                    Stopwatch watch = new Stopwatch();
+                    AddLogMsg("解析任务:" + imgItem.Des);
+                    watch.Start();
+                    var data = new DataBmpAlg(_gbl, oriBytes, OddMaskArgb[0], EvenMaskArgb[0], PadLoc);
+
+                    //激活项目的序号
+                    var imageIndex = ImgItemInfos.Where(p => p.IsActived).ToList().IndexOf(imgItem);
+                    if (ClientRunList.Count != 0 && imageIndex >= 0)
+                    {
+                        ClientRunList[currentTaskId].FinalList = data.FinalData;
+                        ClientRunList[currentTaskId].HeaderList.AddRange(CreateHeadData(imageIndex, data.FinalData.Count, imgItem.Des));
+                    }
+
+                    watch.Stop();
+                    AddLogMsg("解析完成用时" + watch.ElapsedMilliseconds);
                 }
-                watch.Stop();
-                AddLogMsg("解析完成用时" + watch.ElapsedMilliseconds);
+
+
                 var img = BitmapImageUtil.CreateBitmapImageWithBys(oriBytes);
                 img.Freeze();
                 ImgSource = img;
                
                 ActiveFn = imgItem.FnPath;
-                return true;
+
+                res = true;
             }
             catch (Exception e)
             {
                 AddLogMsg(e.ToString());
             }
 
-            return false;
+            _slim.Release();
+            return res;
         }
 
         private ICommand _imgItemSelectionChangedCmd;
@@ -1124,16 +1124,28 @@ namespace TspUtil
                 var param = obj as ExCommandParameter;
                 if (param?.Parameter is ImgItemInfo info)
                 {
-                    if (info.Des.Contains("bmp") || info.Des.Contains("png"))
+                    foreach (var imgItemInfo in ImgItemInfos)
                     {
-                        ActiveImgItem(info, SelectClientId);
-                        AddLogMsg("所选择图片信息" + info.Des);
+                        imgItemInfo.ImgOpState = ImgOpState.None;
                     }
-                    else
+
+                    Task.Factory.StartNew(() =>
                     {
-                        ActiveBinItem(info);
-                        AddLogMsg("所选择文件信息" + info.Des);
-                    }
+                        PanelUnLock = false;
+
+                        if (info.Des.Contains("bmp") || info.Des.Contains("png"))
+                        {
+                            ActiveImgItem(info, SelectClientId, false);
+                            AddLogMsg("所选择图片信息" + info.Des);
+                        }
+                        else
+                        {
+                            ActiveBinItem(info, false);
+                            AddLogMsg("所选择文件信息" + info.Des);
+                        }
+
+                        PanelUnLock = true;
+                    });
                 }
             }, pre =>
             {
@@ -1149,12 +1161,10 @@ namespace TspUtil
             {
                 AddLogMsg("已清除所有文件");
                 ImgItemInfos.Clear();
-                if (ClientRunList.Count != 0)
+
+                foreach (var keyValuePair in ClientRunList)
                 {
-                    for (int i = 0; i < _taskId; i++)
-                    {
-                        ClientRunList[i].CancelToken.Cancel();
-                    }
+                    keyValuePair.Value.CancelToken.Cancel();
                 }
                 ProgressData = 0;
                 ClientRunList.Clear();
@@ -1178,7 +1188,7 @@ namespace TspUtil
                 };
                 if (ofd.ShowDialog(Application.Current.MainWindow).HasValue)
                 {
-                    if (ofd.FilterIndex != 1)
+                    if (ofd.FilterIndex == 1)
                     {
                         ofd.FileNames.ToList().ForEach(p =>
                         {
@@ -1215,41 +1225,46 @@ namespace TspUtil
         {
             get => _sendItemsCmd ?? (_sendItemsCmd = new RelayCommand(delegate (object obj)
             {
-                if (IsEthSim)
+                Task.Factory.StartNew(() =>
                 {
-                    if (_taskId != 0)
+                    PanelUnLock = false;
+                    foreach (var imgItemInfo in ImgItemInfos)
                     {
-                        ClientRunList[--_taskId].CancelToken.Cancel();
+                        imgItemInfo.ImgOpState = ImgOpState.None;
+                    }
+                    if (IsEthSim)
+                    {
                         ClientRunList.Clear();
-                        _taskId++;
-                    }
-                    try
-                    {
-                        PanelUnLock = false;
-                        File.Delete(@"test.txt");
+                        try
+                        {
+                            File.Delete(@"test.txt");
+                        }
+                        catch (Exception)
+                        {
+                            AddLogMsg("未能成功删除test.txt");
+                        }
 
+                        AddLogMsg("测试数据，写出文件：.\\test.txt");
+                        ClientRunList.TryAdd(0, new NetClient(null));
                     }
-                    catch (Exception)
+
+                    if (IsNetWorkSend)
                     {
-                        AddLogMsg("未能成功删除test.txt");
+                        NetWorkSendAll();
                     }
-                    AddLogMsg("写出文件：本地目录\\exed\\test.txt");
-                    ClientRunList.TryAdd(_taskId, new NetClient(null));
-                }
-                if (IsNetWorkSend)
-                {
-                    NetWorkSendAll();
-                }
-                else if (IsSerialSend)
-                {
-                    VmParam.Pcom?.CloseComm();
-                    SerialPcomm();
-                    SerialSendAll();
-                }
-                else
-                {
-                    AddLogMsg("未选择任何发送协议，请选择后再发");
-                }
+                    else if (IsSerialSend)
+                    {
+                        VmParam.Pcom?.CloseComm();
+                        SerialPcomm();
+                        SerialSendAll();
+                    }
+                    else
+                    {
+                        AddLogMsg("未选择任何发送协议，请选择后再发");
+                    }
+                    PanelUnLock = true;
+                    GC.Collect();
+                });
             }, pre =>
             {
                 return true;

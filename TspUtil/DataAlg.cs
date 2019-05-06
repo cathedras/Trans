@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using log4net;
 
 
 namespace TspUtil
@@ -15,6 +16,7 @@ namespace TspUtil
     /// </summary>
     public class DataBmpAlg
     {
+        private static readonly  ILog _log = LogManager.GetLogger("exlog");
         private readonly Gbl _gbl;
         protected readonly Bitmap _img = null;
         protected readonly int _bmpHeaderLen = 54;
@@ -82,7 +84,7 @@ namespace TspUtil
                 }
                 else
                 {
-                    ViewModel.LogPrint("无法解析的格式");
+                    _log.Error("无法解析的格式");
                 }
             }
         }

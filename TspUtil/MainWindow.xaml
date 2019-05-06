@@ -117,13 +117,31 @@
                                         <util:ExInvokeCommandAction Command="{Binding Vm.ImgItemSelectionChangedCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" CommandParameter="{Binding ElementName=imgItemCtls, Path=SelectedItem}"></util:ExInvokeCommandAction>
                                     </i:EventTrigger>
                                 </i:Interaction.Triggers>
+
                                 <ListView.View>
                                     <GridView>
                                         <GridViewColumn Header="#" lvcctrl:RangeColumn.MinWidth="50">
                                             <GridViewColumn.CellTemplate>
-                                                <DataTemplate>
-                                                    <TextBlock TextAlignment="Center" MinWidth="50"
+                                                <DataTemplate DataType="{x:Type local:ImgItemInfo}">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock TextAlignment="Center" MinWidth="20"
                                                            Text="{Binding Mode=OneWay, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=ListViewItem}, Converter={StaticResource OrdinalConverter}}" />
+                                                        <Grid  VerticalAlignment="Stretch" MinWidth="30" Margin="2">
+                                                            <Grid.Style>
+                                                                <Style TargetType="{x:Type Grid}">
+                                                                    <Setter Property="Background" Value="{x:Null}"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding ImgOpState}" Value="{x:Static local:ImgOpState.Success}">
+                                                                            <Setter Property="Background" Value="Green"></Setter>
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding ImgOpState}" Value="{x:Static local:ImgOpState.Fail}">
+                                                                            <Setter Property="Background" Value="Red"></Setter>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Grid.Style>
+                                                        </Grid>
+                                                    </StackPanel>
                                                 </DataTemplate>
                                             </GridViewColumn.CellTemplate>
                                         </GridViewColumn>

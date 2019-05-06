@@ -10,6 +10,19 @@ namespace TspUtil
         private string _des;
         private string _fnPath;
         private string _cs;
+        private ImgOpState _imgOpState;
+
+        public ImgOpState ImgOpState
+        {
+            get => _imgOpState;
+            set
+            {
+                if (value == _imgOpState) return;
+                _imgOpState = value;
+                OnPropertyChanged();
+            }
+        }
+
 
         public bool IsActived
         {
@@ -67,5 +80,12 @@ namespace TspUtil
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
+    }
+
+    public enum ImgOpState
+    {
+        None,
+        Success,
+        Fail,
     }
 }

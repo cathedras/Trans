@@ -8,6 +8,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using log4net;
 using myzy.Util;
 
 namespace TspUtil
@@ -104,6 +105,7 @@ namespace TspUtil
     }
     public class ListenUtil 
     {
+        private static readonly ILog _log = LogManager.GetLogger("exlog");
         public IVmParam _vmParam;
         public TcpListener _tcpListener = null;
         private int _taskId = 0;
@@ -174,7 +176,7 @@ namespace TspUtil
             }
             catch (Exception es)
             {
-                ViewModel.LogPrint(es.ToString());
+                _log.Error(es.Message);
             }
         }
         Pcomm pcomm = new Pcomm();
