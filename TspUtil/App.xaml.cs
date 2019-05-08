@@ -7,10 +7,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
+using Elcommon.AgLib;
 using ErrorHandler;
 using log4net;
-using myzy.AgCustom;
-using myzy.Util;
+using ElCommon.Util;
 
 namespace TspUtil
 {
@@ -25,7 +25,7 @@ namespace TspUtil
             NativeDllHelper.PreLoadNativeDlls();
         }
     }
-
+    /*
     public class TspStartUp
     {
         [STAThread]
@@ -54,5 +54,5 @@ namespace TspUtil
             }
         }
     }
-
+    */
 }

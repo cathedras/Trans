@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using log4net;
-using myzy.Util;
+using ElCommon.Util;
 
 namespace TspUtil
 {
@@ -27,26 +27,17 @@ namespace TspUtil
             set => _vmParam = value;
         }
 
-        public SendClientConfig()
-        {
-            ListenUtil lu = new ListenUtil(VmParam);
-            Command command = new ConcreteCommand(lu);
-            Invoker invoker = new Invoker(command);
-            invoker.NetWorkListenCommand();
-        }
+        private readonly ListenUtil lu;
 
         public SendClientConfig(IVmParam vmParam)
         {
             this._vmParam = vmParam;
-            ListenUtil lu = new ListenUtil(VmParam);
-            Command command = new ConcreteCommand(lu);
-            invoker = new Invoker(command);
-           
+            lu = new ListenUtil(VmParam);
         }
-        public bool NetWorkListener()
+        public bool NetWorkListener(out TcpClient tcpClient)
         {
-            invoker.NetWorkListenCommand();
-            return true;
+            lu.Listen(out tcpClient);
+            return tcpClient != null;
         }
         public void PcomConfigure()
         {
@@ -85,37 +76,21 @@ namespace TspUtil
         public abstract void ListenExe();
         public abstract void PcommExe();
     }
-    public class ConcreteCommand : Command//command class
-    {
-        public ConcreteCommand(ListenUtil listen) 
-            : base(listen)
-        {
-        }
 
-      
-        public override void ListenExe()
-        {
-            this.listen.Listen();
-        }
-
-        public override void PcommExe()
-        {
-            this.listen.SerialConfig();
-        }
-    }
     public class ListenUtil 
     {
         private static readonly ILog _log = LogManager.GetLogger("exlog");
         public IVmParam _vmParam;
         public TcpListener _tcpListener = null;
-        private int _taskId = 0;
+        //private int _taskId = 0;
         public ListenUtil(IVmParam VmParam)
         {
             this._vmParam = VmParam;
         }
 
-        public void Listen()
+        public void Listen(out TcpClient tcpClient)
         {
+            tcpClient = null;
             try
             {
                 if (_vmParam.LinkTimes == 0)
@@ -125,14 +100,18 @@ namespace TspUtil
                 }
 
                 //check the client's connection by cycle
-                TcpClient tcpClient = _tcpListener.AcceptTcpClient();
-        
+                tcpClient = _tcpListener.AcceptTcpClient();
+
+
+
+                Console.WriteLine($@"TCP Listen <----- {tcpClient}");
+
+                _vmParam.ClientId++;
+                int currentId = _vmParam.ClientId;
                 _vmParam.ClientList.TryAdd(_vmParam.ClientId, tcpClient);
                 _vmParam.LinkTimes++;
-                _vmParam.IsConnected = true;
                 _vmParam.Even.TryAdd(_vmParam.ClientId, new ManualResetEvent(true));
                 _vmParam.Even[_vmParam.ClientId].Reset();
-                _vmParam.ClientId++;
                 Task.Factory.StartNew((obj) =>
                 {
                     var client = obj as TcpClient;
@@ -142,10 +121,20 @@ namespace TspUtil
                         var revList = new List<byte>();
                         var stream = client.GetStream();
                         var receivingStr = new List<string>();
-                        int currentId = _taskId++;
                         _vmParam.Even[currentId].Set();
-                        while (client.Client.Poll(-1, SelectMode.SelectRead) && client.Connected && client.Available != 0)
+                        while (true)
                         {
+                            var pollState = client.Client.Poll(500, SelectMode.SelectRead);
+
+                            //断线检测不出来？？
+                            //TODO:
+                            if ( pollState && client.Available == 0 
+                                 || !client.Client.Connected)
+                                break;
+
+                            if (client.Available == 0 && client.Connected)
+                                continue;
+
                             //VmParam.Even[VmParam.ClientId].Reset();
                             var count = stream.Read(tmp, 0, tmp.Length);
                             if (count > 0)
@@ -168,7 +157,7 @@ namespace TspUtil
                             _vmParam.Even[currentId].Set();
                             Thread.Sleep(10);
                         }
-                        _vmParam.IsConnected = false;
+                        //_vmParam.IsConnected = false;
                         _vmParam.Even[currentId].Set();
                         _vmParam.ClientList.TryRemove(currentId, out TcpClient dump);
                     }
@@ -177,6 +166,7 @@ namespace TspUtil
             catch (Exception es)
             {
                 _log.Error(es.Message);
+                tcpClient = null;
             }
         }
         Pcomm pcomm = new Pcomm();

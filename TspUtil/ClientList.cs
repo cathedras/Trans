@@ -13,17 +13,14 @@ namespace TspUtil
     {
         private int _clientId;
         public string _clientIp;
-        private bool isConnect;
 
-        public ClientList(int clientId, string clientIp, bool isConnected)
+        public ClientList(int clientId, string clientIp)
         {
             ClientId = clientId;
             ClientIp = clientIp;
-            IsConnect = isConnect;
         }
 
         public string ClientIp { get => _clientIp; set => _clientIp = value; }
         public int ClientId { get => _clientId; set => _clientId = value; }
-        public bool IsConnect { get => isConnect; set => isConnect = value; }
     }
 }

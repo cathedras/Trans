@@ -1,8 +1,8 @@
-﻿using myzy.Util;
-using System;
+﻿using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
+using ElCommon.Util;
 
 namespace TspUtil
 {
@@ -37,6 +37,7 @@ namespace TspUtil
             IpAddress = "127.0.0.1";
             Port = 2113;
             IsInverse = false;
+            IsAddSizeToHeader = true;
             //Todo
         }
 
@@ -69,5 +70,8 @@ namespace TspUtil
         [SectionName("NETWORK")] public string IpAddress { get; set; }
         [SectionName("NETWORK")] public int Port { get; set; }
         public bool IsInverse { get; set; }
+
+        public bool IsAddSizeToHeader { get; set; }
+        public int LongTimeoutForElapsed { get; set; } = 60 * 1000;
     }
 }

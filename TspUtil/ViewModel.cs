@@ -11,7 +11,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
-using myzy.Util;
+using ElCommon.Util;
 using Microsoft.Win32;
 using TspUtil.Annotations;
 using System.Collections.Generic;
@@ -24,6 +24,8 @@ using System.Collections.Concurrent;
 using log4net;
 using System.IO.Ports;
 using System.Windows.Threading;
+
+using RelayCommand = ElCommon.Util.UtilRelayCommand;
 
 namespace TspUtil
 {
@@ -40,7 +42,7 @@ namespace TspUtil
         private bool _isEthSim;
 
         //sock
-        private string _currentIp = "未选择";
+        //private string _currentIp = "未选择";
 
         //pic config
         private int _expPixHeight;
@@ -66,6 +68,8 @@ namespace TspUtil
         private bool _panelUnLock = true;
         private bool _isSerialSend = false;
         private bool _isNetWorkSend = false;
+
+        private readonly static ILog _log = LogManager.GetLogger("exlog");
 
         //clients' attribute
         private readonly ConcurrentDictionary<int, IDev> _clientRunList = new ConcurrentDictionary<int, IDev>();
@@ -186,16 +190,16 @@ namespace TspUtil
         {
             get => _clientRunList;
         }
-        public string CurrentIp
-        {
-            get => _currentIp;
-            set
-            {
-                if (value == _currentIp) return;
-                _currentIp = value;
-                OnPropertyChanged();
-            }
-        }
+        //public string CurrentIp
+        //{
+        //    get => _currentIp;
+        //    set
+        //    {
+        //        if (value == _currentIp) return;
+        //        _currentIp = value;
+        //        OnPropertyChanged();
+        //    }
+        //}
 
         public ObservableCollection<LogItem> LogItems
         {
@@ -232,15 +236,18 @@ namespace TspUtil
                 OnPropertyChanged();
             }
         }
+
         public bool IsConnected
         {
-            get => VmParam.IsConnected;
+            get => _isConnected;
             set
             {
-                VmParam.IsConnected = value;
+                if (value == _isConnected) return;
+                _isConnected = value;
                 OnPropertyChanged();
             }
         }
+
         public int Port
         {
             get => VmParam.Port;
@@ -352,6 +359,19 @@ namespace TspUtil
             }
         }
 
+        /// <summary>
+        /// 命令头中加入图片分辨率信息
+        /// </summary>
+        public bool IsAddSizeToHeader
+        {
+            get => _isAddSizeToHeader;
+            set
+            {
+                if (value == _isAddSizeToHeader) return;
+                _isAddSizeToHeader = value;
+                OnPropertyChanged();
+            }
+        }
 
         public bool IsInverse
         {
@@ -400,6 +420,14 @@ namespace TspUtil
                         Info = msg,
                         Level = level
                     });
+                    if (level > 0)
+                    {
+                        _log.Info(msg);
+                    }
+                    else
+                    {
+                        _log.Debug(msg);
+                    }
                 }
                 else
                 {
@@ -418,20 +446,20 @@ namespace TspUtil
                 _gbl.EvenRgbA = EvenMaskArgb[0].ExpRGBA;
                 _gbl.IsInverse = IsInverse;
                 _gbl.UsingSimData = UsinSimData;
-                
+                _gbl.IsAddSizeToHeader = IsAddSizeToHeader;
                 _gbl.Save(_cfg, typeof(Gbl));
             }
             catch (Exception e)
             {
-                AddLogMsg(e.ToString());
+                AddLogMsg(e.ToString(), 1);
             }
         }
 
         /// <summary>
         /// Clients' send method with 1024
         /// </summary>
-        private readonly int _sendTimeOut = 2000;
-        private bool DataSend(byte[] buffer, int currentSockId)
+        private readonly int _maxRetryCount = 5; //MAX SINGLE RETRY
+        private bool DataSendFrame(byte[] buffer, int currentSockId, int sendTimeOut = 20 * 1000)
         {
             ManualResetEvent revResetEvent = null;
             if (IsNetWorkSend)
@@ -446,10 +474,53 @@ namespace TspUtil
             bool isFrameSendSuccess = false;
             try
             {
+                var count = 1;
+                while (count < _maxRetryCount && !isFrameSendSuccess)
+                {
+                    AddLogMsg($"Send Data -> ...");
+                    revResetEvent.Reset();
+                    ClientRunList[currentSockId].IsReceiveNg = false;
+                    if (IsEthSim && IsNetWorkSend)
+                    {
+                        revResetEvent.Set();
+                    }
+                    else if (IsNetWorkSend)
+                    {
+                        ClientRunList[currentSockId]?.Send(buffer, 0);
+                    }
+                    else if (IsSerialSend)
+                    {
+                        _serial?.Send(buffer, 0);
+                    }
+                    Thread.Sleep(10);
+                    if (!revResetEvent.WaitOne(sendTimeOut))
+                    {
+                        AddLogMsg("Timeout for DataSend.", 1);
+                        break;
+                    }
+
+                    if (IsNetWorkSend) // Ethnet
+                    {
+                        if (!ClientRunList[currentSockId].IsReceiveNg)
+                        {
+                            isFrameSendSuccess = true;
+                        }
+                        else
+                        {
+                            AddLogMsg($"RESEND DATA: -> {count}/{_maxRetryCount} Count(s)");
+                        }
+                    }
+                    count++;
+                }
+
+              
+                /*
+
                 var sw = new Stopwatch();
+                sw.Start();
+
                 while (sw.Elapsed.Milliseconds < _sendTimeOut)
                 {
-                    sw.Start();
                     revResetEvent.Reset();
                     if (IsNetWorkSend)
                     {
@@ -469,31 +540,28 @@ namespace TspUtil
                     }
                     else
                     {
-                        WriteToTxt.WriteOut(string.Join(" ", Array.ConvertAll(buffer, p => $"{p:X2}")));
+                        _simp.WriteLogFile(string.Join(" ", Array.ConvertAll(buffer, p => $"{p:X2}")));
                         var tsk = Task.Factory.StartNew(() =>
                         {
                             revResetEvent.Set();
                         });
-                        WriteToTxt.WriteOut("\r\n");
                     }
                     
                     if (revResetEvent.WaitOne())
                     {
                         isFrameSendSuccess = true;
-                        break;
                     }
                     else
                     {
                         isFrameSendSuccess = false;
                         AddLogMsg("数据发送失败，请重新发送");
-                        break;
                     }
                 }
-                sw.Stop();
+                sw.Stop();*/
             }
             catch (Exception x)
             {
-                AddLogMsg(x.Message);
+                AddLogMsg(x.Message, 1);
             }
             return isFrameSendSuccess;
         }
@@ -518,30 +586,30 @@ namespace TspUtil
                 if (ct.IsCancellationRequested) break;
                 if (data.Length < (i + 1) * size)
                 {
-                    if (ClientRunList[currentSockId].IsReceiveNg)
-                    {
-                        i--;
-                    }
+                    //if (ClientRunList[currentSockId].IsReceiveNg)
+                    //{
+                    //    i--;
+                    //}
                     byte[] newSend = new byte[data.Length - (i) * size];
                     Array.Copy(data, i * size, newSend, 0, newSend.Length);
-                    sendState = DataSend(newSend, currentSockId);
+                    sendState = DataSendFrame(newSend, currentSockId);
                     if (!sendState)
                     {
-                        AddLogMsg("最后未满规定字节数的一帧数据发送失败，请重新发送");
+                        AddLogMsg("最后未满规定字节数的一帧数据发送失败，请重新发送", 1);
                         break;
                     }
                 }
                 else
                 {
-                    if (ClientRunList[currentSockId].IsReceiveNg)
-                    {
-                        i--;
-                    }
+                    //if (ClientRunList[currentSockId].IsReceiveNg)
+                    //{
+                    //    i--;
+                    //}
                     Array.Copy(data, i * size, dataBuffer, 0, size);
-                    sendState = DataSend(dataBuffer, currentSockId);
+                    sendState = DataSendFrame(dataBuffer, currentSockId);
                     if (!sendState)
                     {
-                        AddLogMsg("本帧数据未能成功发送，请重新开始发送");
+                        AddLogMsg("本帧数据未能成功发送，请重新开始发送", 1);
                         break;
                     }
                 }
@@ -577,10 +645,10 @@ namespace TspUtil
                 var ct = _serial.CancelToken.Token;
                 if (ct.IsCancellationRequested) break;
                 Array.Copy(data, i * size, dataBuffer, 0, size);
-                sendState = DataSend(dataBuffer, 0);
+                sendState = DataSendFrame(dataBuffer, 0);
                 if (!sendState)
                 {
-                    AddLogMsg("本帧数据未能成功发送，请重新开始发送");
+                    AddLogMsg("本帧数据未能成功发送，请重新开始发送", 1);
                     break;
                 }
                 _serial.SendLength = i;
@@ -605,74 +673,88 @@ namespace TspUtil
             byte[] store = StringToByteArray("store");//保存指令
             if (IsConnected)
             {
-                foreach (var dev in ClientRunList)
-                {
-                    dev.Value.HeaderList = new List<byte>();
-                    dev.Value.FinalList = new List<byte>();
-                }
-
                 var tsks = ClientRunList.Select(pair => Task.Factory.StartNew(() =>
                 {
                     var currentSockId = pair.Key;
 
-                    if (!DataSend(erase, currentSockId))
+                    if (!DataSendFrame(erase, currentSockId, GblInfo.LongTimeoutForElapsed))
                     {
-                        AddLogMsg($"erase指令发送失败, {currentSockId}");
+                        AddLogMsg($"erase指令发送失败, {currentSockId}", 1);
                     }
                     else
                     {
-                        for (int i = 0; i < ImgItemInfos.Count; i++)
+                        if (ImgItemInfos.Any(p => p.IsActived))
                         {
-
-                            if (ImgItemInfos[i].IsActived)
+                            for (int i = 0; i < ImgItemInfos.Count; i++)
                             {
-                                if (!ActiveImgItem(ImgItemInfos[i], currentSockId))
+                                if (ImgItemInfos[i].IsActived)
                                 {
-                                    AddLogMsg("解析失败！");
-                                }
-                                //data analyze
-                                else if (!DataSend(ClientRunList[currentSockId].HeaderList.ToArray(), ClientRunList[currentSockId].HeaderList.Count, currentSockId))
-                                {
-                                    AddLogMsg("图片头发送失败，请重新发送");
-                                }
-                                else if (!DataSend(ClientRunList[currentSockId].FinalList.ToArray(), 1024, currentSockId))
-                                {
-                                    AddLogMsg("图片数据发送失败，请重新发送");
-                                }
-                                else
-                                {
-                                    //picoff
-                                    byte[] picoff = StringToByteArray("picoff");
-                                    List<byte> Checksum = new List<byte>();
-                                    Checksum.AddRange(DataBmpAlg.HexStringToByteArray(ImgItemInfos[i].Cs));
+                                    foreach (var dev in ClientRunList)
+                                    {
+                                        dev.Value.HeaderList = new List<byte>();
+                                        dev.Value.FinalList = new List<byte>();
+                                    }
 
-                                    byte[] send = new byte[Checksum.ToArray().Length + picoff.Length];
-                                    Array.Copy(picoff, 0, send, 0, 6);
-                                    Array.Copy(Checksum.ToArray(), 0, send, picoff.Length, Checksum.ToArray().Length);
-                                    if (!DataSend(send, send.Length, currentSockId))
+                                    if (!ActiveImgItem(ImgItemInfos[i], currentSockId))
                                     {
-                                        AddLogMsg("pioff发送失败，结尾发送失败请重新发送");
+                                        AddLogMsg("解析失败！", 1);
                                     }
-                                    else if (!DataSend(store, currentSockId))
-                                    {
-                                        AddLogMsg("指令发送失败，请重新发送");
-                                    }
+                                    //data analyze
                                     else
                                     {
-                                        AddLogMsg("图片发送完成,总共发送字节数：" + ClientRunList[currentSockId].LmgLenCount);
-                                        ClientRunList[currentSockId].LmgLenCount = 0;
-                                        ImgItemInfos[i].ImgOpState = ImgOpState.Success;
-                                    }
-                                }
+                                        var dataFrameLen = 1024;
+                                        if (IsEthSim)
+                                        {
+                                            _simp.WriteSperator();
+                                            _simp.WriteLogFile($"IMAGE DATA --> HL: {pair.Value.HeaderList.Count} , DL: {pair.Value.FinalList.Count}      {ImgItemInfos[i].Des}");
+                                            _simp.WriteSperator();
+                                            dataFrameLen = ExpPixWidth;
+                                        }
 
-                                if (ImgItemInfos[i].ImgOpState == ImgOpState.None)
-                                    ImgItemInfos[i].ImgOpState = ImgOpState.Fail;
+                                        if (!DataSend(pair.Value.HeaderList.ToArray(), pair.Value.HeaderList.Count, currentSockId))
+                                        {
+                                            AddLogMsg("图片头发送失败，请重新发送", 1);
+                                        }
+                                        else if (!DataSend(pair.Value.FinalList.ToArray(), dataFrameLen, currentSockId))
+                                        {
+                                            AddLogMsg("图片数据发送失败，请重新发送", 1);
+                                        }
+                                        else
+                                        {
+                                            //picoff
+                                            byte[] picoff = StringToByteArray("picoff");
+                                            List<byte> Checksum = new List<byte>();
+                                            Checksum.AddRange(DataBmpAlg.HexStringToByteArray(ImgItemInfos[i].Cs));
+
+                                            byte[] send = new byte[Checksum.ToArray().Length + picoff.Length];
+                                            Array.Copy(picoff, 0, send, 0, 6);
+                                            Array.Copy(Checksum.ToArray(), 0, send, picoff.Length, Checksum.ToArray().Length);
+                                            if (!DataSend(send, send.Length, currentSockId))
+                                            {
+                                                AddLogMsg("pioff发送失败，结尾发送失败请重新发送", 1);
+                                            }
+                                            else if (!DataSendFrame(store, currentSockId))
+                                            {
+                                                AddLogMsg("指令发送失败，请重新发送", 1);
+                                            }
+                                            else
+                                            {
+                                                Thread.Sleep(1000);
+                                                AddLogMsg("图片发送完成,总共发送字节数：" + pair.Value.LmgLenCount);
+                                                ClientRunList[currentSockId].LmgLenCount = 0;
+                                                ImgItemInfos[i].ImgOpState = ImgOpState.Success;
+                                            }
+                                        }
+                                    }
+
+                                    if (ImgItemInfos[i].ImgOpState == ImgOpState.None)
+                                        ImgItemInfos[i].ImgOpState = ImgOpState.Fail;
+                                }
                             }
-                            else
-                            {
-                                AddLogMsg("无图片被选中，无法解析");
-                                break;
-                            }
+                        }
+                        else
+                        {
+                            AddLogMsg("无图片被选中，无法解析", 1);
                         }
                     }
                 }));
@@ -681,7 +763,7 @@ namespace TspUtil
             }
             else
             {
-                AddLogMsg("无网络设备连接，请连接设备后再发送");
+                AddLogMsg("无网络设备连接，请连接设备后再发送", 1);
             }
         }
         /// <summary>
@@ -696,17 +778,17 @@ namespace TspUtil
                     if (ActiveBinItem(ImgItemInfos[0]))
                     {
                         AddLogMsg("开始发送bin");
-                        if (!DataSend(Serial.start, 0))
+                        if (!DataSendFrame(Serial.start, 0))
                         {
-                            AddLogMsg("未能成功发送命令");
+                            AddLogMsg("未能成功发送命令", 1);
                         }
                         else if (!SerialDataSend(_serial.FinalList.ToArray(), 258))
                         {
-                            AddLogMsg("未能成功发送数据");
+                            AddLogMsg("未能成功发送数据", 1);
                         }
-                        else if (!DataSend(Serial.end, 0))
+                        else if (!DataSendFrame(Serial.end, 0))
                         {
-                            AddLogMsg("未发送完成数据结束标志");
+                            AddLogMsg("未发送完成数据结束标志", 1);
                         }
                         else
                         {
@@ -718,13 +800,13 @@ namespace TspUtil
                     }
                     else
                     {
-                        AddLogMsg("解析失败！");
+                        AddLogMsg("解析失败！", 1);
                     }
                 }));
             }
             else
             {
-                AddLogMsg("无bin文件选择，请打开一个bin文件 或者 无com口连接");
+                AddLogMsg("无bin文件选择，请打开一个bin文件 或者 无com口连接", 1);
             }
         }
         /// <summary>
@@ -743,13 +825,18 @@ namespace TspUtil
         /// <param name="size">your data list or array is how length </param>
         /// <param name="name">you open the file's name</param>
         /// <returns>the head array</returns>
-        public byte[] CreateHeadData(int picIndex=0, int size=0, string name="")
+        public byte[] CreateHeadData(int picIndex, int size, int w, int h, string name = "")
         {
             List<byte> head = new List<byte>();
             head.AddRange(StringToByteArray("pic"));
             head.Add(Convert.ToByte(picIndex));//4
             head.AddRange(StringToByteArray("BM"));
             head.AddRange(BitConverter.GetBytes(size));//get the picture's data length
+            if (IsAddSizeToHeader)
+            {
+                head.AddRange(BitConverter.GetBytes((ushort)w));
+                head.AddRange(BitConverter.GetBytes((ushort)h));
+            }
             head.AddRange(StringToByteArray(name));
             return head.ToArray();
         }
@@ -768,8 +855,6 @@ namespace TspUtil
             IsEthSim = _gbl.IsEthSim;
             Connections();
 
-
-
             ExpPixHeight = _gbl.ExpByteHeight;
             ExpPixWidth = _gbl.ExpByteWidth;
             Enum.TryParse(_gbl.PadLoc, out _padLoc);
@@ -786,6 +871,7 @@ namespace TspUtil
             EvenOffset = _gbl.EvenOffset.ToString();
             IsSerialSend = _gbl.IsSerialSend;
             IsNetWorkSend = _gbl.IsNetWorkSend;
+            IsAddSizeToHeader = _gbl.IsAddSizeToHeader;
 
             OddMaskArgb.Add(new MaskForArgbItem(_gbl.OddRgbA));
             EvenMaskArgb.Add(new MaskForArgbItem(_gbl.EvenRgbA));
@@ -802,21 +888,15 @@ namespace TspUtil
                 {
                     while (true)
                     {
-                        if (IsNetWorkSend)
+                        if (IsNetWorkSend && IsConnected)
                         {
                             SockListen();
                         }
+                        Thread.Sleep(10);
                     }
                 })).Start();
             }
-            else
-            {
-                CurrentIp = "模拟客户端";
-                IsConnected = true;
-            }
         }
-
-
 
 
 
@@ -875,7 +955,7 @@ namespace TspUtil
             }
             catch (Exception ex)
             {
-                AddLogMsg("网络客户端获取错误："+ex.ToString());
+                AddLogMsg("网络客户端获取错误：" + ex.ToString(), 1);
             }
             return ipaddress;
         }
@@ -883,34 +963,31 @@ namespace TspUtil
         /// <summary>
         /// open a task for listenning the background network connection
         /// </summary>
-        int _listenTaskId = 0;
         private void SockListen()
         {
             string clientIp = string.Empty;
-            if (Configure.NetWorkListener() && Configure.VmParam.ClientList.Count != 0)
+            if (Configure.NetWorkListener(out var tcpClient00))
             {
                 int clientId = Configure.VmParam.ClientId;
-                clientId--;
                 Configure.VmParam.Even[clientId].WaitOne(200);
                 ClientRunList.TryAdd(clientId, new NetClient(Configure.VmParam.ClientList[clientId]));
                 ClientRunList[clientId].Sock = Configure.VmParam.ClientList[clientId];
                 if (ClientRunList[clientId].Sock != null)
                 {
                     clientIp = ClientRunList[clientId].Sock.Client.RemoteEndPoint.ToString();
-                    CurrentIp = clientIp;
+                    //CurrentIp = clientIp;
                 }
 
                 AddLogMsg("客户端" + clientIp + "已连接到本服务器");
                 //clientId = 0;
                 Application.Current?.Dispatcher.Invoke(() =>
                 {
-                    ViewClients.Add(new ClientList(clientId, "客户端: " + ClientRunList[clientId].Sock.Client.RemoteEndPoint.ToString(), Configure.VmParam.IsConnected));
+                    ViewClients.Add(new ClientList(clientId, "客户端: " + ClientRunList[clientId].Sock.Client.RemoteEndPoint));
                 });
                 //client
                 Task.Factory.StartNew(() =>
                 {
-                    int currentSockId = _listenTaskId++;
-
+                    var currentSockId = clientId;
                     while (true)
                     {
                         Configure.VmParam.Even[currentSockId].WaitOne();
@@ -919,30 +996,38 @@ namespace TspUtil
                         {
                             tmpReceivingString = Configure.VmParam.ReceivingString[currentSockId];
                         }
-                        if (tmpReceivingString != null && tmpReceivingString.Contains(NetClient.picok))
+
+                        if (tmpReceivingString?.Count > 0)
+                        {
+                            AddLogMsg($"REV <-- {string.Join("", Array.ConvertAll(tmpReceivingString.ToArray(), p=>p))}");
+                        }
+
+                        if (tmpReceivingString != null 
+                            && tmpReceivingString.Exists(p=>NetClient.picok.IsMatch(p)))
                         {
                             ClientRunList[currentSockId].ResetEvent.Set();
                             Configure.VmParam.ReceivingString[currentSockId].Clear();
-                        }
-                        else if (tmpReceivingString != null && tmpReceivingString.Contains(NetClient.picNG))
-                        {
-                            ClientRunList[currentSockId].ResetEvent.Set();
-                            AddLogMsg(clientIp + "收到picNG,请重新发送");
-                            ClientRunList[currentSockId].IsReceiveNg = true;
                         }
                         else if (tmpReceivingString != null
-                        && tmpReceivingString.Count != 0
-                        && !tmpReceivingString.Contains(NetClient.picok)
-                        && !tmpReceivingString.Contains(NetClient.picNG))
+                                 && tmpReceivingString.Exists(p=>NetClient.picNG.IsMatch(p)))
                         {
-                            AddLogMsg("客户端为:" + clientIp + ":接受参数错误,请重新发送");
-                            Configure.VmParam.ReceivingString[currentSockId].Clear();
+                            ClientRunList[currentSockId].IsReceiveNg = true;
+                            ClientRunList[currentSockId].ResetEvent.Set();
                         }
+                        //else if (tmpReceivingString != null
+                        //&& tmpReceivingString.Count != 0
+                        //&& !tmpReceivingString.Contains(NetClient.picok)
+                        //&& !tmpReceivingString.Contains(NetClient.picNG))
+                        //{
+                        //    AddLogMsg("客户端为:" + clientIp + ":接受参数错误,请重新发送");
+                        //    Configure.VmParam.ReceivingString[currentSockId].Clear();
+                        //}
                         else
                         {
                             //device disconnected
-                            IsConnected = Configure.VmParam.IsConnected;
-                            if (!IsConnected)
+                            //IsConnected = Configure.VmParam.IsConnected;
+                            if(! ClientRunList.Keys.Contains(currentSockId))
+                            //if (!IsConnected)
                             {
                                 AddLogMsg("设备号:" + (currentSockId) + ",   设备ip:" + clientIp + "已断开连接");
                                 Application.Current?.Dispatcher.Invoke(() =>
@@ -963,7 +1048,7 @@ namespace TspUtil
                                 }
                                 ClientRunList[currentSockId].CancelToken.Cancel();
                                 ProgressData = 0;
-                                CurrentIp = "未选择";
+                                //CurrentIp = "未选择";
                                 ClientRunList.Clear();
                                 break;
                             }
@@ -1034,7 +1119,7 @@ namespace TspUtil
                 }
                 else
                 {
-                    AddLogMsg("没有serial对象");
+                    AddLogMsg("没有serial对象", 1);
                 }
 
                 watch.Stop();
@@ -1063,7 +1148,7 @@ namespace TspUtil
             }
             catch (Exception e)
             {
-                AddLogMsg($"Fail to delete {_usingFileName}, MSG = {e.Message}");
+                AddLogMsg($"Fail to delete {_usingFileName}, MSG = {e.Message}", 1);
             }
 
             try
@@ -1071,6 +1156,8 @@ namespace TspUtil
                 byte[] oriBytes = null;
                 var pic = Image.FromFile(imgItem.FnPath);
                 pic.Save(_usingFileName, ImageFormat.Bmp);
+                var w = pic.Width;
+                var h = pic.Height;
                 pic.Dispose();
 
                 var fs = new FileStream(_usingFileName, FileMode.Open);
@@ -1091,7 +1178,8 @@ namespace TspUtil
                     if (ClientRunList.Count != 0 && imageIndex >= 0)
                     {
                         ClientRunList[currentTaskId].FinalList = data.FinalData;
-                        ClientRunList[currentTaskId].HeaderList.AddRange(CreateHeadData(imageIndex, data.FinalData.Count, imgItem.Des));
+                        ClientRunList[currentTaskId].HeaderList.AddRange(
+                            CreateHeadData(imageIndex, data.FinalData.Count, w, h, imgItem.Des));
                     }
 
                     watch.Stop();
@@ -1159,16 +1247,9 @@ namespace TspUtil
         {
             get => _openFdClearCmd ?? (_openFdClearCmd = new RelayCommand(delegate (object obj)
             {
-                AddLogMsg("已清除所有文件");
                 ImgItemInfos.Clear();
-
-                foreach (var keyValuePair in ClientRunList)
-                {
-                    keyValuePair.Value.CancelToken.Cancel();
-                }
+                AddLogMsg("已清除所有文件");
                 ProgressData = 0;
-                ClientRunList.Clear();
-
             }, pre =>
             {
                 return true;
@@ -1221,6 +1302,11 @@ namespace TspUtil
         }
 
         private ICommand _sendItemsCmd;
+        private bool _isConnected;
+        private bool _isAddSizeToHeader;
+
+        private readonly TxtSimpLog _simp = new TxtSimpLog(Encoding.ASCII);
+
         public ICommand SendItemsCmd
         {
             get => _sendItemsCmd ?? (_sendItemsCmd = new RelayCommand(delegate (object obj)
@@ -1235,16 +1321,14 @@ namespace TspUtil
                     if (IsEthSim)
                     {
                         ClientRunList.Clear();
-                        try
+                        var dirName = "..\\tmpdata";
+                        if (!Directory.Exists(dirName))
                         {
-                            File.Delete(@"test.txt");
+                            Directory.CreateDirectory(dirName);
                         }
-                        catch (Exception)
-                        {
-                            AddLogMsg("未能成功删除test.txt");
-                        }
-
-                        AddLogMsg("测试数据，写出文件：.\\test.txt");
+                        _simp.InitSimpLogDir(dirName);
+                        _simp.FileName = $"rawdata_{DateTime.Now:HHmmtt}.txt";
+                        AddLogMsg($"测试数据，写出文件. {_simp.FileName}");
                         ClientRunList.TryAdd(0, new NetClient(null));
                     }
 
@@ -1260,7 +1344,7 @@ namespace TspUtil
                     }
                     else
                     {
-                        AddLogMsg("未选择任何发送协议，请选择后再发");
+                        AddLogMsg("未选择任何发送协议，请选择后再发", 1);
                     }
                     PanelUnLock = true;
                     GC.Collect();
@@ -1271,7 +1355,7 @@ namespace TspUtil
             }));
         }
 
-
+        /*
         private ICommand _selectionChangedCmd;
         public ICommand SelectionChangedCmd
         {
@@ -1290,5 +1374,6 @@ namespace TspUtil
                return true;
            }));
         }
+        */
     }
 }

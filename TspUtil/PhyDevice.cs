@@ -1,9 +1,10 @@
-﻿using myzy.Util;
+﻿using ElCommon.Util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -140,8 +141,8 @@ namespace TspUtil
         private CancellationTokenSource _cancelToken;
         private bool _isReceiveNg;
         private long _imgLenCount;
-        public static string picok = "picok";
-        public static string picNG = "picNG";
+        public static Regex picok = new Regex("picok", RegexOptions.IgnoreCase);
+        public static Regex picNG = new Regex("picNG", RegexOptions.IgnoreCase);
         public NetClient(TcpClient sock)
         {
             Sock = sock;

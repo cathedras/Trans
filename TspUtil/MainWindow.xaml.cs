@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -15,8 +16,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using myzy.AgCustom;
-using myzy.Util;
+using Elcommon.AgLib;
+using ElCommon.Util;
 
 namespace TspUtil
 {
@@ -28,6 +29,9 @@ namespace TspUtil
         public MainWindow()
         {
             InitializeComponent();
+
+            CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+
             this.Loaded += MainWindow_Loaded;
         }
 

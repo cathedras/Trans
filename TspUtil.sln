@@ -5,10 +5,6 @@ VisualStudioVersion = 15.0.27428.2043
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TspUtil", "TspUtil\TspUtil.csproj", "{720864FA-F9B0-4094-BA20-6F25BA5EF21D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgCustom", "BaseLib\AgCustom\AgCustom.csproj", "{FC3F56AA-6E9F-47BF-9237-D669ABA35557}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Util", "BaseLib\Util\Util.csproj", "{BE05B511-514E-4C74-ACBE-A21763513A5F}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{987F93FF-1B34-4CB9-8FEB-C6F78B6786CE}"
 	ProjectSection(SolutionItems) = preProject
 		tspUtil.ini = tspUtil.ini
@@ -24,14 +20,6 @@ Global
 		{720864FA-F9B0-4094-BA20-6F25BA5EF21D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{720864FA-F9B0-4094-BA20-6F25BA5EF21D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{720864FA-F9B0-4094-BA20-6F25BA5EF21D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{FC3F56AA-6E9F-47BF-9237-D669ABA35557}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{FC3F56AA-6E9F-47BF-9237-D669ABA35557}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{FC3F56AA-6E9F-47BF-9237-D669ABA35557}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{FC3F56AA-6E9F-47BF-9237-D669ABA35557}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BE05B511-514E-4C74-ACBE-A21763513A5F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BE05B511-514E-4C74-ACBE-A21763513A5F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BE05B511-514E-4C74-ACBE-A21763513A5F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BE05B511-514E-4C74-ACBE-A21763513A5F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

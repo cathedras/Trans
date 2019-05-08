@@ -230,10 +230,10 @@ namespace TspUtil
                 for (int row = 0; row < _gbl.ExpByteHeight; row += 2)
                 {
                     var item = new List<byte>();
-                    var expOdd = Math.Min(_gbl.ExpByteWidth, _exdata[row].Count);
-                    var expEven = Math.Min(_gbl.ExpByteWidth, _exdata[row + 1].Count);
                     if (row < ImgHeight)
                     {
+                        var expOdd = Math.Min(_gbl.ExpByteWidth, _exdata[row].Count);
+                        var expEven = Math.Min(_gbl.ExpByteWidth, _exdata[row + 1].Count);
                         //处理奇行
                         byte[] oddRow = _exdata[row + OddOffset].Take(expOdd).ToArray();
                         if (OddOffset == 0 && EvenOffset == 0)
@@ -259,6 +259,7 @@ namespace TspUtil
                         {
                             item.Add(hex[(col - expOdd) % hex.Length]);
                         }
+
                         //处理偶行
                         byte[] evenRow = _exdata[row + 1 + EvenOffset].Take(expEven).ToArray();
                         if (OddOffset == 0 && EvenOffset == 0)
@@ -276,6 +277,7 @@ namespace TspUtil
                                 break;
                             }
                         }
+
                         for (int col = item.Count; col < _gbl.ExpByteWidth; col++)
                         {
                             item.Add(hex[(col - expEven) % hex.Length]);
@@ -289,17 +291,26 @@ namespace TspUtil
                         {
                             item.Add(hex[col % hex.Length]);
                         }
-
                     }
+                    ////处理偶行
+                    //for (int i = 0; i < item.Count / 2; i++)
+                    //{
+                    //    data[row, i] = item[i];
+                    //}
+                    ////处理奇行
+                    //for (int i = item.Count / 2; i < item.Count; i++)
+                    //{
+                    //    data[row + 1, i - item.Count / 2] = item[i];
+                    //}
                     //处理偶行
-                    for (int i = 0; i < item.Count / 2; i++)
+                    for (int i = 0; i < _gbl.ExpByteWidth; i++)
                     {
                         data[row, i] = item[i];
                     }
                     //处理奇行
-                    for (int i = item.Count / 2; i < item.Count; i++)
+                    for (int i = 0; i < _gbl.ExpByteWidth; i++)
                     {
-                        data[row + 1, i - item.Count / 2] = item[i];
+                        data[row + 1, i] = item[i + _gbl.ExpByteWidth];
                     }
                 }
 

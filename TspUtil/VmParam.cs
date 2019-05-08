@@ -1,5 +1,4 @@
-﻿using myzy.Util;
-using myzy.Util.Annotations;
+﻿using ElCommon.Util;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -17,11 +16,6 @@ namespace TspUtil
 {
     public interface IVmParam
     {
-        bool IsConnected
-        {
-            get;
-            set;
-        }
         IPAddress IpAddress
         {
             get;
@@ -101,7 +95,6 @@ namespace TspUtil
     {
         //thes fields is saving for Command mode class and View Model to transfer params.
         private IPAddress _ipAddress;
-        private bool _isConnected = false;
         private int _port;
         private readonly ConcurrentDictionary<int, TcpClient> _clientList = new ConcurrentDictionary<int, TcpClient>();
         private ConcurrentDictionary<int, List<string>> _receivingString = new ConcurrentDictionary<int, List<string>>();
@@ -116,18 +109,7 @@ namespace TspUtil
         private int _totalTime = 100;
         private int _intevaTime = 30;
         private Pcomm _pcom;
-        public bool IsConnected
-        {
-            get
-            {
-                return _isConnected;
-            }
-            set
-            {
-                if (value == _isConnected) return;
-                _isConnected = value;
-            }
-        }
+
         public IPAddress IpAddress
         {
             get => _ipAddress;

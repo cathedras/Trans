@@ -4,12 +4,12 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:TspUtil"
-        xmlns:agCustom="clr-namespace:myzy.AgCustom;assembly=AgCustom"
+        xmlns:agCustom="clr-namespace:Elcommon.AgLib;assembly=AgLib"
         xmlns:system="clr-namespace:System;assembly=mscorlib"
         xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
-        xmlns:lvcctrl="clr-namespace:Itenso.Windows.Controls.ListViewLayout;assembly=AgCustom"
+        xmlns:lvcctrl="clr-namespace:Itenso.Windows.Controls.ListViewLayout;assembly=AgLib"
         xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
-        xmlns:util="clr-namespace:myzy.Util;assembly=Util"
+        xmlns:util="clr-namespace:ElCommon.Util;assembly=Util"
         mc:Ignorable="d" Margin="4" Background="{Binding ElementName=mainGrid, Path=Background}"
         Title="TSP MYZY调试助手">
 
@@ -23,7 +23,7 @@
         </ResourceDictionary>
     </Window.Resources>
 
-    <Grid Background="{StaticResource CtlBkBrush}" Name="mainGrid" IsEnabled="{Binding Vm.PanelUnLock,RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">
+    <Grid Background="{StaticResource CtlBkBrush}" Name="mainGrid">
         <Grid.ColumnDefinitions>
             <ColumnDefinition/>
             <ColumnDefinition Width="0*"/>
@@ -36,7 +36,7 @@
 
         <Menu Grid.Row="0" HorizontalAlignment="Right" Margin="0,2,2,2" Background="{StaticResource CtlBkBrush}" Width="76">
             <MenuItem Header="操作">
-                <MenuItem Header="服务监视" IsCheckable="True"/>
+                <MenuItem Header="服务监视" IsCheckable="True" IsChecked="{Binding Path=Vm.IsConnected, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"/>
 
             </MenuItem>
             <MenuItem Header="关于"></MenuItem>
@@ -54,12 +54,6 @@
                 <WrapPanel>
                     <TextBlock Text="："></TextBlock>
                     <TextBlock Text="{Binding Vm.Port, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"></TextBlock>
-                </WrapPanel>
-            </StatusBarItem>
-            <StatusBarItem>
-                <WrapPanel>
-                    <TextBlock Text="当前客户端:"></TextBlock>
-                    <TextBlock Text="{Binding Vm.CurrentIp, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"></TextBlock>
                 </WrapPanel>
             </StatusBarItem>
 
@@ -100,18 +94,23 @@
 
                         <GridSplitter Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" VerticalAlignment="Stretch"  HorizontalAlignment="Right"  Width="2"></GridSplitter>
                         <GridSplitter Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" VerticalAlignment="Top" HorizontalAlignment="Stretch" Height="2"></GridSplitter>
-                        <agCustom:LogItemViewEx Margin="0,2" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" MsgLogItems="{Binding Vm.LogItems, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"/>
+                        <agCustom:LogItemViewEx Margin="0,2" Grid.Row="1" Grid.ColumnSpan="2" Grid.Column="0" AutoScrollLevel="1" MsgLogItems="{Binding Vm.LogItems, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"/>
 
-                        <Grid Grid.Row="0" Grid.Column="0" >
+                        <Grid Grid.Row="0" Grid.Column="0" 
+                              IsEnabled="{Binding Vm.PanelUnLock,RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="7*"/>
+                                <ColumnDefinition Width="118*"/>
+                            </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="*"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="60"></RowDefinition>
                             </Grid.RowDefinitions>
 
-                            <ListView Margin="2,2,0,2" HorizontalContentAlignment="Stretch" 
+                            <ListView Margin="2,2,0,1.5" HorizontalContentAlignment="Stretch" 
                                   lvcctrl:ListViewLayoutManager.Enabled="True" Name="imgItemCtls"
-                                  Background="{StaticResource CtlBkBrush}" ItemsSource="{Binding Vm.ImgItemInfos, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}">
+                                  Background="{StaticResource CtlBkBrush}" ItemsSource="{Binding Vm.ImgItemInfos, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}" Grid.ColumnSpan="2">
                                 <i:Interaction.Triggers>
                                     <i:EventTrigger EventName="SelectionChanged">
                                         <util:ExInvokeCommandAction Command="{Binding Vm.ImgItemSelectionChangedCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" CommandParameter="{Binding ElementName=imgItemCtls, Path=SelectedItem}"></util:ExInvokeCommandAction>
@@ -187,7 +186,7 @@
                                 </ListView.View>
                             </ListView>
 
-                            <UniformGrid Grid.Row="1" Rows="1" Margin="5" Background="{StaticResource CtlBkBrush}">
+                            <UniformGrid Grid.Row="1" Rows="1" Margin="5,4.5" Background="{StaticResource CtlBkBrush}" Grid.ColumnSpan="2">
                                 <UniformGrid.Resources>
                                     <Style TargetType="Button">
                                         <Setter Property="Width" Value="50"></Setter>
@@ -197,18 +196,18 @@
                                 <Button Command="{Binding Vm.OpenFdCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">打开</Button>
                                 <Button Command="{Binding Vm.SendItemsCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">发送</Button>
                             </UniformGrid>
-                            <UniformGrid Grid.Row="2">
-                                <ListBox Background="{StaticResource CtlBkBrush}"
+                            <UniformGrid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,28.5,0,0.5" Grid.RowSpan="2">
+                                <ListBox Background="{StaticResource CtlBkBrush}" 
                                          ItemsSource="{Binding Vm.ViewClients, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"
                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                          Name="Item">
 
-                                    <i:Interaction.Triggers>
+                                    <!--<i:Interaction.Triggers>
                                         <i:EventTrigger EventName="SelectionChanged">
                                             <util:ExInvokeCommandAction Command="{Binding Vm.SelectionChangedCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" CommandParameter="{Binding ElementName=Item, Path=SelectedItem}">
                                             </util:ExInvokeCommandAction>
                                         </i:EventTrigger>
-                                    </i:Interaction.Triggers>
+                                    </i:Interaction.Triggers>-->
 
 
                                     <ListBox.ItemsPanel>
@@ -401,9 +400,11 @@
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="30px"></RowDefinition>
                                                 <RowDefinition Height="30px"></RowDefinition>
+                                                <RowDefinition Height="30px"></RowDefinition>
                                             </Grid.RowDefinitions>
                                             <CheckBox VerticalAlignment="Center" Grid.Column="1" Grid.Row="0" IsChecked="{Binding Vm.IsInverse, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">上下翻转图片</CheckBox>
-                                            <CheckBox VerticalAlignment="Center" Grid.Column="1" Grid.Row="1" IsChecked="{Binding Vm.UsinSimData, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">使用模拟数据(必须选择一张图片获取分辨率)</CheckBox>
+                                            <CheckBox VerticalAlignment="Center" Grid.Column="1" Grid.Row="1"  IsChecked="{Binding Vm.IsAddSizeToHeader, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">头数据包含分辨信息</CheckBox>
+                                            <CheckBox VerticalAlignment="Center" Grid.Column="1" Grid.Row="2" IsChecked="{Binding Vm.UsinSimData, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">使用模拟数据(必须选择一张图片获取分辨率)</CheckBox>
                                         </Grid>
                                     </Expander>
                                 </StackPanel>
@@ -454,7 +455,7 @@
                                                 </i:Interaction.Behaviors>
                                             </xctk:WatermarkTextBox>
                                         </Grid>
-                                        
+
                                     </Expander>
                                 </StackPanel>
                             </GroupBox>
