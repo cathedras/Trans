@@ -669,6 +669,9 @@ namespace TspUtil
                                     //data analyze
                                     else
                                     {
+                                        var sw = new Stopwatch();
+                                        sw.Start();
+
                                         var frameLen = 1024;
                                         if (IsEthSim)
                                         {
@@ -706,10 +709,12 @@ namespace TspUtil
                                             else
                                             {
                                                 Thread.Sleep(1000);
-                                                AddLogMsg("图片发送完成,总共发送字节数：" + pair.LmgLenCount);
+                                                AddLogMsg($"图片{ImgItemInfos[i].Des} 发送完成,总共发送字节数：{pair.LmgLenCount}, 耗时 {sw.ElapsedMilliseconds:D6}ms");
                                                 ImgItemInfos[i].ImgOpState = ImgOpState.Success;
                                             }
                                         }
+
+                                        sw.Stop();
                                     }
 
                                     if (ImgItemInfos[i].ImgOpState == ImgOpState.None)

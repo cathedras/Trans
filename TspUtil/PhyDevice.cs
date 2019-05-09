@@ -206,9 +206,21 @@ namespace TspUtil
         private SemaphoreSlim _slim = new SemaphoreSlim(1);
 
         private int _maxRetryCount = 1;
-        public bool DataSendFrame(byte[] buffer, int offset, int sendTimeOut = 20 * 1000)
+        public bool DataSendFrame(byte[] buffer, int offset, int sendTimeOut = 2 * 1000)
         {
             //_vm.AddLogMsg("Send Command ---> ");
+            byte[] sampleBytes = null;
+            if (buffer.Length > 5)
+            {
+                sampleBytes = buffer.Take(5).ToArray();
+            }
+            else
+            {
+                sampleBytes = buffer.Take(buffer.Length).ToArray();
+            }
+            var msg  = string.Join(" ", Array.ConvertAll(sampleBytes, input => $"{input:X2}"));
+            _log.Debug($"--> Len: {buffer.Length:D5}  Raw: {msg} ....");
+
             bool isFrameSendSuccess = false;
             _slim.Wait(Timeout.Infinite);
             try
@@ -253,6 +265,8 @@ namespace TspUtil
                 byte[] temp = new byte[reclen];
                 Array.Copy(buf, 0, temp, 0, reclen);
                 lst.AddRange(temp);
+
+                _log.Debug($"<--- {string.Join($" ", Array.ConvertAll(temp, input=>$"{input:X2}"))}");
             }
 
             return lst;
