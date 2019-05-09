@@ -216,6 +216,16 @@
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <Grid>
+                                                <Grid.Resources>
+                                                    <Style TargetType="Grid">
+                                                        <Setter Property="Background" Value="{x:Null}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsOffLine}" Value="True">
+                                                                <Setter Property="Grid.Background" Value="Red"></Setter>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Grid.Resources>
                                                 <TextBlock Grid.Column="0" Text="{Binding ClientId}"></TextBlock>
                                                 <TextBlock Grid.Column="1" Text="{Binding ClientIp}"></TextBlock>
                                                 <Grid.ColumnDefinitions>

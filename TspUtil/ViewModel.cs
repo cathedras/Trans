@@ -32,6 +32,7 @@ namespace TspUtil
     public interface IViewModel
     {
         void AddLogMsg(string msg, int level = 0);
+        void SaveDataFrame(string msg);
     }
 
     public class ViewModel : INotifyPropertyChanged, IViewModel
@@ -437,6 +438,12 @@ namespace TspUtil
                 }
             }
         }
+
+        public void SaveDataFrame(string msg)
+        {
+            _simp.WriteLogFile(msg);
+        }
+
         /// <summary>
         /// Save the ini file.
         /// </summary>
@@ -578,7 +585,6 @@ namespace TspUtil
                     {
                         strike = Maximum;
                     }
-
                     prog(dev, strike);
                 }
             }
@@ -632,7 +638,7 @@ namespace TspUtil
         {
             byte[] erase = StringToByteArray("erase");//清除指令
             byte[] store = StringToByteArray("store");//保存指令
-            if (IsConnected)
+            if (ClientRunList.Any())
             {
                 var tsks = ClientRunList.Select(pair => Task.Factory.StartNew(() =>
                 {
@@ -663,18 +669,20 @@ namespace TspUtil
                                     //data analyze
                                     else
                                     {
+                                        var frameLen = 1024;
                                         if (IsEthSim)
                                         {
                                             _simp.WriteSperator();
                                             _simp.WriteLogFile($"IMAGE DATA --> HL: {pair.HeaderList.Count} , DL: {pair.FinalList.Count}      {ImgItemInfos[i].Des}");
                                             _simp.WriteSperator();
+                                            frameLen = ExpPixWidth;
                                         }
 
                                         if (!pair.DataSendFrame(pair.HeaderList.ToArray(), pair.HeaderList.Count))
                                         {
                                             AddLogMsg("图片头发送失败，请重新发送", 1);
                                         }
-                                        else if (!DataSendWithBlockRetry(pair.FinalList.ToArray(), 1024, pair, true, (a, b) =>
+                                        else if (!DataSendWithBlockRetry(pair.FinalList.ToArray(), frameLen, pair, true, (a, b) =>
                                         {
                                             ProgressData = b; //更新进度条
                                         }))
@@ -845,18 +853,26 @@ namespace TspUtil
         /// </summary>
         private void Connections()
         {
-            new Task(new Action(delegate()
+            if (IsEthSim)
             {
-                while (true)
+                var dev = new NetVirDevice(this);
+                ClientRunList.Add(dev);
+                ViewClients.Add(new ClientList(dev, 0, "Vir Eth Dev"));
+            }
+            else
+            {
+                new Task(new Action(delegate()
                 {
-                    if (IsNetWorkSend && IsConnected)
+                    while (true)
                     {
-                        SockListen();
+                        if (IsNetWorkSend && IsConnected)
+                        {
+                            SockListen();
+                        }
+                        Thread.Sleep(10);
                     }
-
-                    Thread.Sleep(10);
-                }
-            })).Start();
+                })).Start();
+            }
         }
 
 
@@ -937,7 +953,7 @@ namespace TspUtil
                 AddLogMsg("客户端" + clientIp + "已连接到本服务器");
                 Application.Current.Dispatcher.Invoke(() =>
                 {
-                    ViewClients.Add(new ClientList(ViewClients.Count, clientIp));
+                    ViewClients.Add(new ClientList(dev, ViewClients.Count, clientIp));
                 });
                 //client
                 Task.Factory.StartNew((obj) =>
@@ -946,28 +962,43 @@ namespace TspUtil
                     var revData = new List<byte>();
                     while (ClientRunList.Contains(d))
                     {
-                        var data = d.Receive();
-                        if (data.Any())
+                        try
                         {
-                            revData.AddRange(data);
-                            var tmpReceivingString = new List<string>();
-                            tmpReceivingString.Add(Encoding.ASCII.GetString(revData.ToArray()));
-                            revData.Clear();
-
-                            AddLogMsg($"REV <-- {string.Join("", Array.ConvertAll(tmpReceivingString.ToArray(), p => p))}");
-
-                            if (tmpReceivingString.Exists(p => NetDev.picok.IsMatch(p)))
+                            var data = d.Receive();
+                            if (data.Any())
                             {
-                                d.ResetEvent.Set();
+                                revData.AddRange(data);
+                                var tmpReceivingString = new List<string>();
+                                tmpReceivingString.Add(Encoding.ASCII.GetString(revData.ToArray()));
+                                revData.Clear();
+
+                                //AddLogMsg($"REV <-- {string.Join("", Array.ConvertAll(tmpReceivingString.ToArray(), p => p))}");
+
+                                if (tmpReceivingString.Exists(p => NetDev.picok.IsMatch(p)))
+                                {
+                                    d.ResetEvent.Set();
+                                }
+                                else if (tmpReceivingString.Exists(p => NetDev.picNG.IsMatch(p)))
+                                {
+                                    d.IsReceiveNg = true;
+                                    d.ResetEvent.Set();
+                                }
                             }
-                            else if (tmpReceivingString.Exists(p => NetDev.picNG.IsMatch(p)))
+
+                            Thread.Sleep(1);
+                        }
+                        catch (Exception e)
+                        {
+                            AddLogMsg($"Rev ERR: {e.Message}", 1);
+                            ClientRunList.Remove(d);
+                            for (var i = 0; i < ViewClients.Count; i++)
                             {
-                                d.IsReceiveNg = true;
-                                d.ResetEvent.Set();
+                                if (ViewClients[i].Dev == d)
+                                {
+                                    ViewClients[i].IsOffLine = true;
+                                }
                             }
                         }
-
-                        Thread.Sleep(10);
                     }
                 }, dev);
             }              
@@ -1239,7 +1270,6 @@ namespace TspUtil
                     }
                     if (IsEthSim)
                     {
-                        ClientRunList.Clear();
                         var dirName = "..\\tmpdata";
                         if (!Directory.Exists(dirName))
                         {

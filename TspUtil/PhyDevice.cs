@@ -208,7 +208,7 @@ namespace TspUtil
         private int _maxRetryCount = 1;
         public bool DataSendFrame(byte[] buffer, int offset, int sendTimeOut = 20 * 1000)
         {
-            _vm.AddLogMsg("Send Command ---> ");
+            //_vm.AddLogMsg("Send Command ---> ");
             bool isFrameSendSuccess = false;
             _slim.Wait(Timeout.Infinite);
             try
@@ -245,6 +245,7 @@ namespace TspUtil
         public List<byte> Receive()
         {
             List<byte> lst = new List<byte>();
+
             byte[] buf = new byte[512];
             int reclen = _sock.Client.Receive(buf);
             if (reclen > 0)
@@ -253,6 +254,7 @@ namespace TspUtil
                 Array.Copy(buf, 0, temp, 0, reclen);
                 lst.AddRange(temp);
             }
+
             return lst;
         }
 
