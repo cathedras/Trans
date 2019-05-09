@@ -7,13 +7,14 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using log4net;
 
 namespace TspUtil
 {
     /// <summary>
     /// this is a interface for one client param.
     /// </summary>
-    public class Serial : IDev
+    public class SerialDev : IDev
     {
         private ManualResetEvent _resetevent;
         private List<byte> _header;
@@ -22,13 +23,25 @@ namespace TspUtil
         private CancellationTokenSource _cancelToken;
         private long _imgLenCount;
         private Pcomm _pcom;
-        public static byte[] start = new byte[] { 0x7f, 0xf7 };
-        public static byte[] end = new byte[] { 0x81, 0x7e };
+
+        public static byte[] StartBytes
+        {
+            get { return new byte[] {0x7f, 0xf7}; }
+        }
+
+        public static byte[] EndBytes
+        {
+            get { return new byte[] {0x81, 0x7e}; }
+        }
 
         public static byte receiveOk = 0x79;
-        public Serial(Pcomm pcom)
+        private Pcomm _pcomm;
+        private readonly IViewModel _vm;
+
+        public SerialDev(Pcomm pcom, IViewModel vm)
         {
-            Pcom = pcom;
+            _pcomm = pcom;
+            _vm = vm;
             _cancelToken = new CancellationTokenSource();
         }
 
@@ -78,14 +91,7 @@ namespace TspUtil
             //    _cancelToken = value;
             //}
         }
-        public bool IsReceiveNg
-        {
-            get => throw new NotImplementedException();
-            set
-            {
-                throw new NotImplementedException();
-            }
-        }
+        public bool IsReceiveNg { get; set; }
 
         public long LmgLenCount
         {
@@ -96,19 +102,21 @@ namespace TspUtil
             }
         }
 
-        public Pcomm Pcom
+        public bool DataSendFrame(byte[] sendlst, int offset, int sendTimeOut = 20000)
         {
-            get => _pcom;
-            set
+            if (_pcomm.sio_write(sendlst) != 0)
             {
-                _pcom = value;
+                LmgLenCount += sendlst.Length;
+                return true;
             }
+            return false;
         }
+
         public List<byte> Receive()
         {
             byte[] buff = new byte[256];
             List<byte> lst = new List<byte>();
-            int reclen = Pcom.sio_read(ref buff, buff.Length);
+            int reclen = _pcomm.sio_read(ref buff, buff.Length);
            
             if (reclen > 0)
             {
@@ -117,23 +125,14 @@ namespace TspUtil
             return lst;
         }
 
-        public bool Send(byte[] sendlst, int offset = 0)
-        {
-            if (Pcom.sio_write(sendlst) != 0)
-            {
-                return true;
-            }
-            return false;
-        }
-
-       
     }
     /// <summary>
     /// network using in this class if something need to be sent you think
     /// </summary>
-    public class NetClient : IDev
+    public class NetDev : IDev
     {
         private TcpClient _sock;
+        private readonly IViewModel _vm;
         private ManualResetEvent _resetevent;
         private List<byte> _header;
         private List<byte> _finalList;
@@ -143,23 +142,17 @@ namespace TspUtil
         private long _imgLenCount;
         public static Regex picok = new Regex("picok", RegexOptions.IgnoreCase);
         public static Regex picNG = new Regex("picNG", RegexOptions.IgnoreCase);
-        public NetClient(TcpClient sock)
+        public NetDev(TcpClient sock, IViewModel vm)
         {
-            Sock = sock;
+            _sock = sock;
+            _vm = vm;
             _cancelToken = new CancellationTokenSource();
+            _resetevent = new ManualResetEvent(false);
         }
-
-        public TcpClient Sock
-        {
-            get { return _sock; }
-            set
-            {
-                _sock = value;
-            }
-        }
+        
         public ManualResetEvent ResetEvent
         {
-            get => _resetevent ?? (_resetevent = new ManualResetEvent(false));
+            get => _resetevent;
         }
         public List<byte> HeaderList
         {
@@ -189,10 +182,6 @@ namespace TspUtil
         public CancellationTokenSource CancelToken
         {
             get => _cancelToken;
-            //set
-            //{
-            //    CancelToken = value;
-            //}
         }
         public bool IsReceiveNg
         {
@@ -212,16 +201,44 @@ namespace TspUtil
             }
         }
 
-        public Pcomm Pcom
-        {
-            get => throw new NotImplementedException();
-            set => throw new NotImplementedException();
-        }
+        private static readonly ILog _log = LogManager.GetLogger("exlog");
 
-        public bool Send(byte[] sendlst, int offset = 0)
+        private SemaphoreSlim _slim = new SemaphoreSlim(1);
+
+        private int _maxRetryCount = 1;
+        public bool DataSendFrame(byte[] buffer, int offset, int sendTimeOut = 20 * 1000)
         {
-            Sock?.GetStream().Write(sendlst, offset, sendlst.Length);
-            return true;
+            _vm.AddLogMsg("Send Command ---> ");
+            bool isFrameSendSuccess = false;
+            _slim.Wait(Timeout.Infinite);
+            try
+            {
+                var count = 1;
+
+                while (count <= _maxRetryCount && !isFrameSendSuccess)
+                {
+                    _resetevent.Reset();
+                    IsReceiveNg = false;
+
+                    _sock.GetStream().Write(buffer, 0, buffer.Length);
+
+                    if (!_resetevent.WaitOne(sendTimeOut))
+                    {
+                        break;
+                    }
+
+                    isFrameSendSuccess = true;
+                    LmgLenCount += buffer.Length;
+                }
+            }
+            catch (Exception x)
+            {
+                _log.Debug(x.Message);
+            }
+
+            _slim.Release();
+
+            return isFrameSendSuccess;
         }
 
 
@@ -229,7 +246,7 @@ namespace TspUtil
         {
             List<byte> lst = new List<byte>();
             byte[] buf = new byte[512];
-            int reclen = Sock.Client.Receive(buf);
+            int reclen = _sock.Client.Receive(buf);
             if (reclen > 0)
             {
                 byte[] temp = new byte[reclen];
@@ -238,8 +255,6 @@ namespace TspUtil
             }
             return lst;
         }
+
     }
-
-
-
 }

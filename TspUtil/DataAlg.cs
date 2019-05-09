@@ -278,7 +278,7 @@ namespace TspUtil
                             }
                         }
 
-                        for (int col = item.Count; col < _gbl.ExpByteWidth; col++)
+                        for (int col = item.Count; col < 2 * _gbl.ExpByteWidth; col++)
                         {
                             item.Add(hex[(col - expEven) % hex.Length]);
                         }

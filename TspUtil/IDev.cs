@@ -11,12 +11,6 @@ namespace TspUtil
 {
     public interface IDev
     {
-
-        TcpClient Sock
-        {
-            set;
-            get;
-        }
         ManualResetEvent ResetEvent
         {
             get;
@@ -39,7 +33,6 @@ namespace TspUtil
         CancellationTokenSource CancelToken
         {
             get;
-            //set;
         }
         bool IsReceiveNg
         {
@@ -51,16 +44,8 @@ namespace TspUtil
             get;
             set;
         }
-        Pcomm Pcom
-        {
-            set;
-            get;
-        }
 
-
-        bool Send(byte[] sendlst, int offset);
+        bool DataSendFrame(byte[] sendlst, int offset,int sendTimeOut = 20 * 1000);
         List<byte> Receive();
-
-
     }
 }

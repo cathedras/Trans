@@ -90,7 +90,7 @@
     <Compile Include="Gbl.cs" />
     <Compile Include="ImgItemInfo.cs" />
     <Compile Include="MaskForArgbItem.cs" />
-    <Compile Include="SendClientConfig.cs" />
+    <Compile Include="DataSendClient.cs" />
     <Compile Include="PadLoc.cs" />
     <Compile Include="Properties\Annotations.cs" />
     <Compile Include="ViewModel.cs" />

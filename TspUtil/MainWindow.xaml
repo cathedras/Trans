@@ -37,22 +37,20 @@
         <Menu Grid.Row="0" HorizontalAlignment="Right" Margin="0,2,2,2" Background="{StaticResource CtlBkBrush}" Width="76">
             <MenuItem Header="操作">
                 <MenuItem Header="服务监视" IsCheckable="True" IsChecked="{Binding Path=Vm.IsConnected, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"/>
-
             </MenuItem>
             <MenuItem Header="关于"></MenuItem>
         </Menu>
 
         <StatusBar Grid.Row="2" Background="{StaticResource CtlBkBrush}" Margin="15,5,6,5">
-            <StatusBarItem>
+            <!--<StatusBarItem>
                 <WrapPanel>
                     <TextBlock Text="服务器:"></TextBlock>
                     <TextBlock Text="{Binding Vm.IpAddress, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"></TextBlock>
                 </WrapPanel>
-            </StatusBarItem>
+            </StatusBarItem>-->
 
             <StatusBarItem>
                 <WrapPanel>
-                    <TextBlock Text="："></TextBlock>
                     <TextBlock Text="{Binding Vm.Port, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"></TextBlock>
                 </WrapPanel>
             </StatusBarItem>
