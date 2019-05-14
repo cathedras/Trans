@@ -322,10 +322,41 @@ namespace TspUtil
                     }
                 }
             }
+
             return packageData;
         }
+
+        /// <summary>
+        /// 高低位反转
+        /// </summary>
+        /// <param name="packageData"></param>
+        /// <returns></returns>
+        public List<byte> HighLowBytesRevert(List<byte> packageData)
+        {
+            var lst = new List<byte>();
+
+            //按2字节反序
+            var index = 0;
+            var count = packageData.Count / 2;
+            while (index < count)
+            {
+                if (2 * index + 1 < packageData.Count)
+                {
+                    lst.Add(packageData[2 * index + 1]);
+                }
+
+                if (2 * index < packageData.Count)
+                {
+
+                    lst.Add(packageData[2 * index + 0]);
+                }
+                index++;
+            }
+
+            return lst;
+        }
+
         //
-       
         /// <summary>
         /// 数据提取，将期望的数据提取到list里面去
         /// </summary>

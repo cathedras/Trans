@@ -1,0 +1,17 @@
+Release Notes
+
+========================================================
+Version 1.0.0
+2019-5-14  elton.tian<elton.tian@myzygroup.com>
+------------
+Changes:
+1. 增加高低字节反序
+2. D878->配置为
+              	OddRgbA: r1g1r1g0 
+              	EvenRgbA: r0g0r1g1
+	IsInverse=False
+	IsAddSizeToHeader=True
+	HighLowBytesRevert=True
+
+
+

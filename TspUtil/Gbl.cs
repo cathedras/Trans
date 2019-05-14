@@ -66,12 +66,14 @@ namespace TspUtil
         public bool IsSerialSend { get; set; }
         public bool IsNetWorkSend { get; set; }
         public bool IsEthSim { get; set; }
+        public int SimFrameLen { get; set; } = 1024;
         public bool UsingSimData { get; set; }
         [SectionName("NETWORK")] public string IpAddress { get; set; }
         [SectionName("NETWORK")] public int Port { get; set; }
         public bool IsInverse { get; set; }
 
         public bool IsAddSizeToHeader { get; set; }
+        public bool HighLowBytesRevert { get; set; } = false;
         public int LongTimeoutForElapsed { get; set; } = 60 * 1000;
     }
 }

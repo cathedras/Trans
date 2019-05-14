@@ -160,6 +160,18 @@ namespace TspUtil
             }
         }
 
+        public bool HighLowBytesRevert
+        {
+            get => _highLowBytesRevert;
+            set
+            {
+                if (value == _highLowBytesRevert) return;
+                _highLowBytesRevert = value;
+                _gbl.HighLowBytesRevert = value;
+                OnPropertyChanged();
+            }
+        }
+
         public bool UsinSimData
         {
             get => _usinSimData;
@@ -678,7 +690,7 @@ namespace TspUtil
                                             _simp.WriteSperator();
                                             _simp.WriteLogFile($"IMAGE DATA --> HL: {pair.HeaderList.Count} , DL: {pair.FinalList.Count}      {ImgItemInfos[i].Des}");
                                             _simp.WriteSperator();
-                                            frameLen = ExpPixWidth;
+                                            frameLen = _gbl.SimFrameLen;
                                         }
 
                                         if (!pair.DataSendFrame(pair.HeaderList.ToArray(), pair.HeaderList.Count))
@@ -850,6 +862,7 @@ namespace TspUtil
             IsSerialSend = _gbl.IsSerialSend;
             IsNetWorkSend = _gbl.IsNetWorkSend;
             IsAddSizeToHeader = _gbl.IsAddSizeToHeader;
+            HighLowBytesRevert = _gbl.HighLowBytesRevert;
 
             OddMaskArgb.Add(new MaskForArgbItem(_gbl.OddRgbA));
             EvenMaskArgb.Add(new MaskForArgbItem(_gbl.EvenRgbA));
@@ -1128,7 +1141,13 @@ namespace TspUtil
                     var imageIndex = ImgItemInfos.Where(p => p.IsActived).ToList().IndexOf(imgItem);
                     if (imageIndex >= 0)
                     {
-                        dev.FinalList = data.FinalData;
+                        var lstdata = data.FinalData;
+                        if (HighLowBytesRevert)
+                        {
+                           lstdata = data.HighLowBytesRevert(lstdata);
+                        }
+
+                        dev.FinalList = lstdata;
                         dev.HeaderList.AddRange(
                             CreateHeadData(imageIndex, data.FinalData.Count, w, h, imgItem.Des));
 
@@ -1260,6 +1279,7 @@ namespace TspUtil
 
         private readonly TxtSimpLog _simp = new TxtSimpLog(Encoding.ASCII);
         private int _port;
+        private bool _highLowBytesRevert;
 
         public ICommand SendItemsCmd
         {

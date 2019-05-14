@@ -35,7 +35,7 @@ namespace TspUtil
 
         public bool DataSendFrame(byte[] sendlst, int offset, int sendTimeOut = 20000)
         {
-            var msg = string.Join(" ", Array.ConvertAll(sendlst, b => $"{b:X2}"));
+            var msg = string.Join(" ", Array.ConvertAll(sendlst, b => $"{b:x2}"));
             _vm.SaveDataFrame(msg);
             _resetEvent.Set();
             Thread.Sleep(5);

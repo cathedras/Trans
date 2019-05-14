@@ -409,10 +409,12 @@
                                                 <RowDefinition Height="30px"></RowDefinition>
                                                 <RowDefinition Height="30px"></RowDefinition>
                                                 <RowDefinition Height="30px"></RowDefinition>
+                                                <RowDefinition Height="30px"></RowDefinition>
                                             </Grid.RowDefinitions>
-                                            <CheckBox VerticalAlignment="Center" Grid.Column="1" Grid.Row="0" IsChecked="{Binding Vm.IsInverse, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">上下翻转图片</CheckBox>
-                                            <CheckBox VerticalAlignment="Center" Grid.Column="1" Grid.Row="1"  IsChecked="{Binding Vm.IsAddSizeToHeader, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">头数据包含分辨信息</CheckBox>
-                                            <CheckBox VerticalAlignment="Center" Grid.Column="1" Grid.Row="2" IsChecked="{Binding Vm.UsinSimData, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">使用模拟数据(必须选择一张图片获取分辨率)</CheckBox>
+                                            <CheckBox VerticalAlignment="Center" Grid.Row="0" IsChecked="{Binding Vm.IsInverse, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">上下翻转图片</CheckBox>
+                                            <CheckBox VerticalAlignment="Center" Grid.Row="1" IsChecked="{Binding Vm.HighLowBytesRevert, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">数据字节高低位反转</CheckBox>
+                                            <CheckBox VerticalAlignment="Center" Grid.Row="2"  IsChecked="{Binding Vm.IsAddSizeToHeader, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">头数据包含分辨信息</CheckBox>
+                                            <CheckBox VerticalAlignment="Center" Grid.Row="3" IsChecked="{Binding Vm.UsinSimData, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">使用模拟数据(必须选择一张图片获取分辨率)</CheckBox>
                                         </Grid>
                                     </Expander>
                                 </StackPanel>
