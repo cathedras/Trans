@@ -172,10 +172,11 @@ namespace TspUtil
                     _tcpListener.Start();
                 }
 
+                _log.Debug($"Start TCP Listen...");
                 //check the client's connection by cycle
                 tcpClient = _tcpListener.AcceptTcpClient();
 
-                Console.WriteLine($@"TCP Listen <----- {tcpClient}");
+                _log.Debug($@"TCP Listen <----- {tcpClient}");
             }
             catch (Exception es)
             {

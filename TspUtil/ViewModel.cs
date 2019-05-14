@@ -816,7 +816,7 @@ namespace TspUtil
             return head.ToArray();
         }
 
-
+        private readonly string _xmlCfgV2 = @"..\cfgv2.xml";
         public ViewModel()
         {
             SwVersion = "1.0.0b";
@@ -826,6 +826,9 @@ namespace TspUtil
             _gbl = new Gbl();
             _gbl.LoadGbl<Gbl>(_cfg);
 
+            //PlainXmlDb db = new PlainXmlDb(_xmlCfgV2);
+            //db.SaveObjToDb("GblV2", _gbl);
+            //db.FlushToDb();
 
             IsEthSim = _gbl.IsEthSim;
             Connections();
