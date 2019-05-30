@@ -831,7 +831,7 @@ namespace TspUtil
         private readonly string _xmlCfgV2 = @"..\cfgv2.xml";
         public ViewModel()
         {
-            SwVersion = "1.0.0b";
+            SwVersion = "1.0.1";
 #if DEBUG
             SwVersion = "0.0.0";
 #endif

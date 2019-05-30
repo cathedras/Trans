@@ -1,6 +1,14 @@
 Release Notes
 
 ========================================================
+Version 1.0.1
+2019-5-30  elton.tian<elton.tian@myzygroup.com>
+------------
+Changes:
+1. 调整checksum输入框大小
+2. UI布局调整
+
+========================================================
 Version 1.0.0
 2019-5-14  elton.tian<elton.tian@myzygroup.com>
 ------------
