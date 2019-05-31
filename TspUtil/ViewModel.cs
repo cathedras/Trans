@@ -573,7 +573,7 @@ namespace TspUtil
                 }
 
                 Array.Copy(data, i * size, dataBuffer, 0, curDataLen);
-                if (!dev.DataSendFrame(dataBuffer, 0))
+                if (!dev.DataSendFrame(dataBuffer, 0, 2 * 1000))
                 {
                     AddLogMsg("数据发送失败", 1);
                     prog?.Invoke(dev, 0);
@@ -582,7 +582,7 @@ namespace TspUtil
                 }
                 else if (!dev.IsReceiveNg)
                 {
-                    dev.SendLength ++;
+                    dev.SendLength++;
                 }
                 else //IsReceiveNg
                 {
@@ -714,7 +714,7 @@ namespace TspUtil
                                             byte[] send = new byte[Checksum.ToArray().Length + picoff.Length];
                                             Array.Copy(picoff, 0, send, 0, 6);
                                             Array.Copy(Checksum.ToArray(), 0, send, picoff.Length, Checksum.ToArray().Length);
-                                            if (!pair.DataSendFrame(send, send.Length))
+                                            if (!pair.DataSendFrame(send, send.Length, _gbl.LongTimeoutForElapsed))
                                             {
                                                 AddLogMsg("pioff发送失败，结尾发送失败请重新发送", 1);
                                             }
@@ -734,7 +734,7 @@ namespace TspUtil
                                 }
                             }
 
-                            if (!pair.DataSendFrame(store, 0))
+                            if (!pair.DataSendFrame(store, 0, _gbl.LongTimeoutForElapsed))
                             {
                                 AddLogMsg("指令发送失败，请重新发送", 1);
                             }
@@ -831,7 +831,7 @@ namespace TspUtil
         private readonly string _xmlCfgV2 = @"..\cfgv2.xml";
         public ViewModel()
         {
-            SwVersion = "1.0.1";
+            SwVersion = "1.0.2";
 #if DEBUG
             SwVersion = "0.0.0";
 #endif
@@ -976,8 +976,8 @@ namespace TspUtil
                 {
                     ViewClients.Add(new ClientList(dev, ViewClients.Count, clientIp));
                 });
-                //client
-                Task.Factory.StartNew((obj) =>
+
+                new Thread(obj =>
                 {
                     var d = (IDev) obj;
                     var revData = new List<byte>();
@@ -1004,9 +1004,11 @@ namespace TspUtil
                                     d.IsReceiveNg = true;
                                     d.ResetEvent.Set();
                                 }
+                                else
+                                {
+                                    Thread.Sleep(10);
+                                }
                             }
-
-                            Thread.Sleep(1);
                         }
                         catch (Exception e)
                         {
@@ -1021,7 +1023,7 @@ namespace TspUtil
                             }
                         }
                     }
-                }, dev);
+                }){ IsBackground = true, Priority = ThreadPriority.AboveNormal}.Start(dev);
             }              
         }
 
@@ -1264,12 +1266,7 @@ namespace TspUtil
                             Cs = ""
                         });
                     }
-                    
-
                 }
-            }, pre =>
-            {
-                return true;
             }));
         }
 
@@ -1289,7 +1286,8 @@ namespace TspUtil
 
                 ProgressData = 0;
                 AddLogMsg($"开始数据发送...");
-                Task.Factory.StartNew(() =>
+                
+                new Thread(() =>
                 {
                     PanelUnLock = false;
                     foreach (var imgItemInfo in ImgItemInfos)
@@ -1324,10 +1322,7 @@ namespace TspUtil
                     }
                     PanelUnLock = true;
                     GC.Collect();
-                });
-            }, pre =>
-            {
-                return true;
+                }){IsBackground = true, Priority = ThreadPriority.AboveNormal}.Start();
             }));
         }
 

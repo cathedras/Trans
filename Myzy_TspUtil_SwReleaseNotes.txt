@@ -1,6 +1,13 @@
 Release Notes
 
 ========================================================
+Version 1.0.2
+2019-5-31  elton.tian<elton.tian@myzygroup.com>
+------------
+Changes:
+1. 调整任务优先级，提升性能
+
+========================================================
 Version 1.0.1
 2019-5-30  elton.tian<elton.tian@myzygroup.com>
 ------------

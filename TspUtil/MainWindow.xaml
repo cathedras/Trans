@@ -65,14 +65,14 @@
             <StatusBarItem HorizontalAlignment="Right">
                 <WrapPanel>
                     <TextBlock Text="发送状态：" VerticalAlignment="Center"></TextBlock>
-                    <ProgressBar Maximum="{Binding Vm.Maximum,RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" Value="{Binding Vm.ProgressData,RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"   HorizontalAlignment="Left" Height="10" Grid.Row="2" VerticalAlignment="Center" Width="150"/>
+                    <ProgressBar Maximum="{Binding Vm.Maximum, Mode=OneTime, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" Value="{Binding Vm.ProgressData,RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"   HorizontalAlignment="Left" Height="10" Grid.Row="2" VerticalAlignment="Center" Width="150"/>
                 </WrapPanel>
             </StatusBarItem>
             <StatusBar>
-                <TextBlock Text="{Binding Vm.ProgressData,RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" Width="24"></TextBlock> %
+                <TextBlock Text="{Binding Vm.ProgressData, Mode=OneWay, RelativeSource ={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" Width="24"></TextBlock> %
             </StatusBar>
             <StatusBarItem HorizontalAlignment="Right">
-                <TextBlock Text="{Binding Vm.SwVersion, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, StringFormat={}VER : {0:}}" MinWidth="80"></TextBlock>
+                <TextBlock Text="{Binding Vm.SwVersion, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, StringFormat={}VER : {0:}}" MinWidth="80"></TextBlock>
             </StatusBarItem>
         </StatusBar>
 

@@ -102,7 +102,7 @@ namespace TspUtil
             }
         }
 
-        public bool DataSendFrame(byte[] sendlst, int offset, int sendTimeOut = 20000)
+        public bool DataSendFrame(byte[] sendlst, int offset, int sendTimeOut = 500)
         {
             if (_pcomm.sio_write(sendlst) != 0)
             {
@@ -145,6 +145,10 @@ namespace TspUtil
         public NetDev(TcpClient sock, IViewModel vm)
         {
             _sock = sock;
+            _sock.SendBufferSize = 1024 * 2;
+            _sock.ReceiveBufferSize = 1024 * 2;
+            _sock.NoDelay = false;
+
             _vm = vm;
             _cancelToken = new CancellationTokenSource();
             _resetevent = new ManualResetEvent(false);
@@ -206,7 +210,7 @@ namespace TspUtil
         private SemaphoreSlim _slim = new SemaphoreSlim(1);
 
         private int _maxRetryCount = 1;
-        public bool DataSendFrame(byte[] buffer, int offset, int sendTimeOut = 2 * 1000)
+        public bool DataSendFrame(byte[] buffer, int offset, int sendTimeOut = 500)
         {
             //_vm.AddLogMsg("Send Command ---> ");
             byte[] sampleBytes = null;
@@ -219,7 +223,7 @@ namespace TspUtil
                 sampleBytes = buffer.Take(buffer.Length).ToArray();
             }
             var msg  = string.Join(" ", Array.ConvertAll(sampleBytes, input => $"{input:X2}"));
-            _log.Debug($"--> Len: {buffer.Length:D5}  Raw: {msg} ....");
+            //_log.Debug($"--> Len: {buffer.Length:D5}  Raw: {msg} ....");
 
             bool isFrameSendSuccess = false;
             _slim.Wait(Timeout.Infinite);
@@ -245,7 +249,7 @@ namespace TspUtil
             }
             catch (Exception x)
             {
-                _log.Debug(x.Message);
+                _log.Error(x.Message);
             }
 
             _slim.Release();

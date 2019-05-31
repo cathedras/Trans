@@ -45,7 +45,7 @@ namespace TspUtil
             set;
         }
 
-        bool DataSendFrame(byte[] sendlst, int offset,int sendTimeOut = 20 * 1000);
+        bool DataSendFrame(byte[] sendlst, int offset,int sendTimeOut = 500);
         List<byte> Receive();
     }
 }
