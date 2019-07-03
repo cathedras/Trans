@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -38,6 +39,11 @@ namespace TspUtil
         protected override void OnClosed(EventArgs e)
         {
             Vm.SaveDataOnExit();
+            if (File.Exists(Vm.GblInfo.FileListXml))
+            {
+                Vm.XmlDelete(Vm.GblInfo.FileListXml);
+            }
+            Vm.SaveFileOpenList(Vm.GblInfo.FileListXml);
             Environment.Exit(0);
             base.OnClosed(e);
         }
@@ -73,6 +79,5 @@ namespace TspUtil
         // Using a DependencyProperty as the backing store for Vm.  This enables animation, styling, binding, etc...
         public static readonly DependencyProperty VmProperty =
             DependencyProperty.Register("Vm", typeof(ViewModel), typeof(MainWindow), new PropertyMetadata(new ViewModel()));
-
     }
 }

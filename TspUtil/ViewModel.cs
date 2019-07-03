@@ -26,6 +26,7 @@ using System.IO.Ports;
 using System.Windows.Threading;
 
 using RelayCommand = ElCommon.Util.UtilRelayCommand;
+using System.Xml;
 
 namespace TspUtil
 {
@@ -46,7 +47,7 @@ namespace TspUtil
         private string _activeFn;
         private readonly Gbl _gbl;
         private bool _isEthSim;
-
+        private string _rdFile;
         //sock
         //private string _currentIp = "未选择";
 
@@ -74,6 +75,7 @@ namespace TspUtil
         private bool _panelUnLock = true;
         private bool _isSerialSend = false;
         private bool _isNetWorkSend = false;
+        private string _currentChooseFile=string.Empty;
 
         private readonly static ILog _log = LogManager.GetLogger("exlog");
 
@@ -82,6 +84,12 @@ namespace TspUtil
        // static VmParam _vmParam = new VmParam();
         private int _selectClientId = 0;
         private bool _usinSimData = false;
+        private bool _usingNoBoundLst = false;
+        public string RdFile
+        {
+            get => _rdFile;
+            set => _rdFile = value;
+        }
         public bool IsSerialSend
         {
             get => _isSerialSend;
@@ -227,9 +235,25 @@ namespace TspUtil
                 OnPropertyChanged();
             }
         }
+        public bool UsingNoBoundLst
+        {
+            get => _usingNoBoundLst;
+            set
+            {
+                if (_usingNoBoundLst == value) return;
+                _usingNoBoundLst = value;
+                _gbl.UsingNoBoundLst = value;
+                OnPropertyChanged();
+            }
+        }
         public ObservableCollection<ImgItemInfo> ImgItemInfos
         {
             get => _imgItemInfos ?? (_imgItemInfos = new ObservableCollection<ImgItemInfo>());
+        }
+        public string CurrentChooseFile
+        {
+            get => _currentChooseFile;
+            set => _currentChooseFile = value;
         }
         public bool IsEthSim
         {
@@ -476,64 +500,7 @@ namespace TspUtil
             }
         }
 
-        /// <summary>
-        /// Clients' send method with 1024
-        /// </summary>
-        /*private bool DataSendFrame(byte[] buffer, IDev dev, int sendTimeOut)
-        {
-            ManualResetEvent revResetEvent = dev.ResetEvent;
-
-            bool isFrameSendSuccess = false;
-            try
-            {
-                var count = 1;
-
-                while (count < _maxRetryCount && !isFrameSendSuccess)
-                {
-                    AddLogMsg($"Send Data -> ...");
-                    revResetEvent.Reset();
-                    dev.IsReceiveNg = false;
-                    if (IsEthSim && IsNetWorkSend)
-                    {
-                        Thread.Sleep(10);
-                        revResetEvent.Set();
-                    }
-                    else if (IsNetWorkSend)
-                    {
-                       Configure.VmParam.ReceivingString.Clear();
-                       ClientRunList[currentSockId]?.Send(buffer, 0);
-                    }
-                    else if (IsSerialSend)
-                    {
-                        _serial?.Send(buffer, 0); 
-                    }
-                    if (!revResetEvent.WaitOne(sendTimeOut))
-                    {
-                        AddLogMsg("Timeout for DataSend.", 1);
-                        break;
-                    }
-
-                    if (IsNetWorkSend) // Ethnet
-                    {
-                        if (!ClientRunList[currentSockId].IsReceiveNg)
-                        {
-                            isFrameSendSuccess = true;
-                        }
-                        else
-                        {
-                            AddLogMsg($"RESEND DATA: -> {count}/{_maxRetryCount} Count(s)");
-                        }
-                    }
-                    count++;
-                }
-            }
-            catch (Exception x)
-            {
-                AddLogMsg(x.Message, 1);
-            }
-            return isFrameSendSuccess;
-        }
-        */
+        
         /// <summary>
         /// 按Page = 4 * size，Block = 64 Page  Block进行错误重试数据, 不足size时，需要填充数据
         /// </summary>
@@ -603,46 +570,7 @@ namespace TspUtil
 
             return sendState;
         }
-        /// <summary>
-        /// bin file send by serial for every one frame
-        /// </summary>
-        /// <param name="data"></param>
-        /// <param name="size"></param>
-        /// <returns></returns>
-        /*
-        private bool SerialDataSend(byte[] data, int size)
-        {
-            var dataBuffer = new byte[size];
-            int length = (data.Length % size == 0)
-                ? data.Length / size
-                : (data.Length - data.Length % size) / size + 1;
-            bool sendState = false;
-            _serial.SendLength = 0;
-            for (int i = _serial.SendLength; i < length; i++)
-            {
-                var ct = _serial.CancelToken.Token;
-                if (ct.IsCancellationRequested) break;
-                Array.Copy(data, i * size, dataBuffer, 0, size);
-                sendState = DataSendFrame(dataBuffer, 0);
-                if (!sendState)
-                {
-                    AddLogMsg("本帧数据未能成功发送，请重新开始发送", 1);
-                    break;
-                }
-                _serial.SendLength = i;
-                Application.Current?.Dispatcher.Invoke(() =>
-                {
-                    double strike = ((double)i / length) * Maximum;
-                    ProgressData = strike;
-                    if (i == length - 1)
-                    {
-                        ProgressData = Maximum;
-                    }
-                });
-            }
-            return sendState;
-        }
-        */
+       
         /// <summary>
         /// Send all bmpphoto by network. 
         /// </summary>
@@ -684,7 +612,7 @@ namespace TspUtil
                                         var sw = new Stopwatch();
                                         sw.Start();
 
-                                        var frameLen = 1024;
+                                        var frameLen = _gbl.FrameLen;
                                         if (IsEthSim)
                                         {
                                             _simp.WriteSperator();
@@ -831,7 +759,7 @@ namespace TspUtil
         private readonly string _xmlCfgV2 = @"..\cfgv2.xml";
         public ViewModel()
         {
-            SwVersion = "1.0.2";
+            SwVersion = "1.0.3";
 #if DEBUG
             SwVersion = "0.0.0";
 #endif
@@ -844,7 +772,6 @@ namespace TspUtil
 
             IsEthSim = _gbl.IsEthSim;
             Connections();
-
             ExpPixHeight = _gbl.ExpByteHeight;
             ExpPixWidth = _gbl.ExpByteWidth;
             Enum.TryParse(_gbl.PadLoc, out _padLoc);
@@ -857,6 +784,7 @@ namespace TspUtil
             Port = _gbl.Port;
             IsInverse = _gbl.IsInverse;
             UsinSimData = _gbl.UsingSimData;
+            UsingNoBoundLst = _gbl.UsingNoBoundLst;
             OddOffset = _gbl.OddOffset.ToString();
             EvenOffset = _gbl.EvenOffset.ToString();
             IsSerialSend = _gbl.IsSerialSend;
@@ -866,6 +794,11 @@ namespace TspUtil
 
             OddMaskArgb.Add(new MaskForArgbItem(_gbl.OddRgbA));
             EvenMaskArgb.Add(new MaskForArgbItem(_gbl.EvenRgbA));
+            if (File.Exists(_gbl.FileListXml))
+            {
+                FromFileRead(_gbl.FileListXml);
+            }
+           
 
         }
 
@@ -930,6 +863,53 @@ namespace TspUtil
             }  
         }
 
+
+       
+        public void SaveFileOpenList(string filePath)//
+        {
+            //var file = File.Open($"FileInfoItem.xml", FileMode.OpenOrCreate);
+            var pXml = new PlainXmlDb(filePath);
+            var list = new List<SaveFileList>();
+            int i = 1;
+            foreach(var var in ImgItemInfos)
+            {
+                list.Add(new SaveFileList()
+                {
+                    IsActived = var.IsActived,
+                    Cs = var.Cs,
+                    Des = var.Des,
+                    FnPath = var.FnPath,
+                    _index = i++,
+                });
+                
+            }
+            pXml.SaveObjListToDb("File", list);
+            pXml.FlushToDb();
+        }
+
+        public void XmlDelete(string filePath)
+        {
+            File.Delete(filePath);
+        }
+
+
+        public void FromFileRead(string filePath)
+        {
+            var pXml = new PlainXmlDb(filePath);
+            var allValue = new List<SaveFileList>();
+            pXml.LoadObjListFromDb("File",ref allValue);
+            foreach (var va in allValue)
+            {
+                ImgItemInfos.Add(new ImgItemInfo()
+                {
+                    IsActived = va.IsActived,
+                    Cs=va.Cs,
+                    Des=va.Des,
+                    FnPath=va.FnPath,
+                });
+            }
+        }
+      
 
         /// <summary>
         /// Get local ip address for the server.
@@ -1138,7 +1118,9 @@ namespace TspUtil
                     AddLogMsg("解析任务:" + imgItem.Des);
                     watch.Start();
                     var data = new DataBmpAlg(_gbl, oriBytes, OddMaskArgb[0], EvenMaskArgb[0], PadLoc);
-
+                    //添加checkSum
+                    var checkSum = string.Join("", Array.ConvertAll(data.CheckSum, b => $"{b:x2}"));
+                    imgItem.Cs = checkSum;
                     //激活项目的序号
                     var imageIndex = ImgItemInfos.Where(p => p.IsActived).ToList().IndexOf(imgItem);
                     if (imageIndex >= 0)
@@ -1178,6 +1160,18 @@ namespace TspUtil
             return res;
         }
 
+        public void StartDrag(object sender, System.Windows.DragEventArgs e)
+        {
+            AddLogMsg("start drag ");
+        }
+        public void StopDrag(object sender, System.Windows.DragEventArgs e)
+        {
+            AddLogMsg("stop drag");
+        }
+
+
+
+
         private ICommand _imgItemSelectionChangedCmd;
         public ICommand ImgItemSelectionChangedCmd
         {
@@ -1199,11 +1193,13 @@ namespace TspUtil
                         {
                             ActiveImgItem(info, null);
                             AddLogMsg("所选择图片信息" + info.Des);
+                            CurrentChooseFile = info.Des;
                         }
                         else
                         {
                             ActiveBinItem(info, false);
                             AddLogMsg("所选择文件信息" + info.Des);
+                            CurrentChooseFile = info.Des;
                         }
 
                         PanelUnLock = true;
@@ -1215,13 +1211,16 @@ namespace TspUtil
             }));
         }
 
-
         private ICommand _openFdClearCmd;
         public ICommand OpenFdClearCmd
         {
             get => _openFdClearCmd ?? (_openFdClearCmd = new RelayCommand(delegate (object obj)
             {
                 ImgItemInfos.Clear();
+                if (File.Exists(_gbl.FileListXml))
+                {
+                    XmlDelete(_gbl.FileListXml);
+                }
                 AddLogMsg("已清除所有文件");
                 ProgressData = 0;
             }, pre =>
@@ -1252,7 +1251,7 @@ namespace TspUtil
                                 IsActived = true,
                                 FnPath = Path.GetFullPath(p),
                                 Des = Path.GetFileName(p),
-                                Cs = "EE50000000000000"
+                                Cs = "0000000000000000"
                             });
                         });
                     }
@@ -1326,25 +1325,61 @@ namespace TspUtil
             }));
         }
 
-        /*
-        private ICommand _selectionChangedCmd;
-        public ICommand SelectionChangedCmd
+        
+        private ICommand _itemsMoveUp;
+        public ICommand ItemsMoveUp
         {
-            get => _selectionChangedCmd ?? (_selectionChangedCmd = new RelayCommand(delegate (object obj)
+            get => _itemsMoveUp ?? (_itemsMoveUp = new RelayCommand(delegate (object obj)
             {
-                var param = obj as ExCommandParameter;
-                if (param?.Parameter is ClientList ins)
+                int index = 0;
+                for (int i=1;i<ImgItemInfos.Count;i++)
                 {
-                    ClientRunList[ins.ClientId].Sock = Configure.VmParam.ClientList[ins.ClientId];
-                    SelectClientId = ins.ClientId;
-                    CurrentIp = ClientRunList[ins.ClientId].Sock.Client.RemoteEndPoint.ToString();
-                    IsConnected = ViewClients[ins.ClientId].IsConnect;
+                    if (ImgItemInfos[i].Des.Equals(CurrentChooseFile))
+                    {
+                        index = i;
+                        break;
+                    }
                 }
-            }, pre =>
-           {
-               return true;
-           }));
+                if (index > 0)
+                {
+                    var tmp = ImgItemInfos[index - 1];
+                    ImgItemInfos[index - 1] = ImgItemInfos[index];
+                    ImgItemInfos[index] = tmp;
+                }
+                else
+                {
+                    AddLogMsg("CAN'T MOVE UP,BECAUSE THIS IS THE FIRST FILE!");
+                }
+                
+            }));
         }
-        */
+        private ICommand _itemsMoveDown;
+        public ICommand ItemsMoveDown
+        {
+            get => _itemsMoveDown ?? (_itemsMoveDown = new RelayCommand(delegate (object obj)
+            {
+                int index = 0;
+                for (int i = 1; i < ImgItemInfos.Count; i++)
+                {
+                    if (ImgItemInfos[i].Des.Equals(CurrentChooseFile))
+                    {
+                        index = i;
+                        break;
+                    }
+                }
+                if (index < ImgItemInfos.Count - 1)
+                {
+                    var tmp = ImgItemInfos[index + 1];
+                    ImgItemInfos[index + 1] = ImgItemInfos[index];
+                    ImgItemInfos[index] = tmp;
+                }
+                else
+                {
+                    AddLogMsg("CAN'T MOVE DOWN,BECAUSE THIS IS THE LAST FILE!");
+                }
+
+            }));
+        }
+        
     }
 }

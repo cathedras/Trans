@@ -38,7 +38,9 @@ namespace TspUtil
             Port = 8080;
             IsInverse = false;
             IsAddSizeToHeader = true;
+            UsingNoBoundLst = false;
             //Todo
+            FileListXml = "FileInfoItem.xml";
         }
 
         [SectionName("PIC")] public int ClientWidth { get; set; }
@@ -67,12 +69,15 @@ namespace TspUtil
         public bool IsNetWorkSend { get; set; }
         public bool IsEthSim { get; set; }
         public int SimFrameLen { get; set; } = 1024;
+        public int FrameLen { get; set; } = 1024;
         public bool UsingSimData { get; set; }
         [SectionName("NETWORK")] public string IpAddress { get; set; }
         [SectionName("NETWORK")] public int Port { get; set; }
         public bool IsInverse { get; set; }
 
         public bool IsAddSizeToHeader { get; set; }
+        public bool UsingNoBoundLst { get; set; }
+        public string FileListXml { get; set; }
         public bool HighLowBytesRevert { get; set; } = false;
         public int LongTimeoutForElapsed { get; set; } = 60 * 1000;
     }

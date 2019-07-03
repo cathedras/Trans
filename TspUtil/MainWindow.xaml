@@ -104,13 +104,19 @@
 
                             <ListView Margin="2,2,0,1.5" HorizontalContentAlignment="Stretch" 
                                   lvcctrl:ListViewLayoutManager.Enabled="True" Name="imgItemCtls"
-                                  Background="{StaticResource CtlBkBrush}" ItemsSource="{Binding Vm.ImgItemInfos, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}" Grid.ColumnSpan="2">
+                                  Background="{StaticResource CtlBkBrush}" 
+                                  ItemsSource="{Binding Vm.ImgItemInfos, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}"
+                                  Grid.ColumnSpan="2"
+                                  AllowDrop="True"
+                                  
+                                  SelectionMode="Extended"
+                                  
+                                  >
                                 <i:Interaction.Triggers>
                                     <i:EventTrigger EventName="SelectionChanged">
                                         <util:ExInvokeCommandAction Command="{Binding Vm.ImgItemSelectionChangedCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" CommandParameter="{Binding ElementName=imgItemCtls, Path=SelectedItem}"></util:ExInvokeCommandAction>
                                     </i:EventTrigger>
                                 </i:Interaction.Triggers>
-
                                 <ListView.View>
                                     <GridView>
                                         <GridViewColumn Header="#" lvcctrl:RangeColumn.MinWidth="50">
@@ -189,6 +195,8 @@
                                 <Button Command="{Binding Vm.OpenFdClearCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">清空</Button>
                                 <Button Command="{Binding Vm.OpenFdCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">打开</Button>
                                 <Button Command="{Binding Vm.SendItemsCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">发送</Button>
+                                <Button Command="{Binding Vm.ItemsMoveUp, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">上移</Button>
+                                <Button Command="{Binding Vm.ItemsMoveDown, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">下移</Button>
                             </UniformGrid>
                             <UniformGrid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,28.5,0,0.5" Grid.RowSpan="2">
                                 <ListBox Background="{StaticResource CtlBkBrush}" 
@@ -406,11 +414,13 @@
                                                 <RowDefinition Height="30px"></RowDefinition>
                                                 <RowDefinition Height="30px"></RowDefinition>
                                                 <RowDefinition Height="30px"></RowDefinition>
+                                                <RowDefinition Height="30px"></RowDefinition>
                                             </Grid.RowDefinitions>
                                             <CheckBox VerticalAlignment="Center" Grid.Row="0" IsChecked="{Binding Vm.IsInverse, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">上下翻转图片</CheckBox>
                                             <CheckBox VerticalAlignment="Center" Grid.Row="1" IsChecked="{Binding Vm.HighLowBytesRevert, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">数据字节高低位反转</CheckBox>
                                             <CheckBox VerticalAlignment="Center" Grid.Row="2"  IsChecked="{Binding Vm.IsAddSizeToHeader, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">头数据包含分辨信息</CheckBox>
                                             <CheckBox VerticalAlignment="Center" Grid.Row="3" IsChecked="{Binding Vm.UsinSimData, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">使用模拟数据(必须选择一张图片获取分辨率)</CheckBox>
+                                            <CheckBox VerticalAlignment="Center" Grid.Row="4" IsChecked="{Binding Vm.UsingNoBoundLst, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">CheckSum不使用约束列表</CheckBox>
                                         </Grid>
                                     </Expander>
                                 </StackPanel>

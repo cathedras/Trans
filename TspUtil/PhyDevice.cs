@@ -237,7 +237,7 @@ namespace TspUtil
                     IsReceiveNg = false;
 
                     _sock.GetStream().Write(buffer, 0, buffer.Length);
-
+                    
                     if (!_resetevent.WaitOne(sendTimeOut))
                     {
                         break;

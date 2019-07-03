@@ -9,9 +9,9 @@ namespace TspUtil
 {
     static class WriteToTxt
     {
-        public static void WriteOut<T>(T[] by)
+        public static void WriteOut<T>(T[] by,string path)
         {
-            FileStream fs = new FileStream("test.txt", FileMode.OpenOrCreate|FileMode.Append, FileAccess.ReadWrite);
+            FileStream fs = new FileStream(path, FileMode.OpenOrCreate|FileMode.Append, FileAccess.ReadWrite);
             StreamWriter writer = new StreamWriter(fs);
             foreach(T data in by)
             {
@@ -20,9 +20,9 @@ namespace TspUtil
             writer.Close();
             fs.Close();
         }
-        public static void WriteOut(string str)
+        public static void WriteOut(string str,string path)
         {
-            FileStream fs = new FileStream("test.txt", FileMode.OpenOrCreate | FileMode.Append, FileAccess.Write);
+            FileStream fs = new FileStream(path, FileMode.OpenOrCreate | FileMode.Append, FileAccess.Write);
             StreamWriter writer = new StreamWriter(fs);  
             writer.Write(str);
             writer.Close();

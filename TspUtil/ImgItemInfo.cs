@@ -1,6 +1,12 @@
-﻿using System.ComponentModel;
+﻿using System;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
+using System.Text;
 using TspUtil.Annotations;
+using System.Xml.XmlConfiguration;
+using System.Xml;
 
 namespace TspUtil
 {
@@ -12,6 +18,7 @@ namespace TspUtil
         private string _cs;
         private ImgOpState _imgOpState;
 
+        
         public ImgOpState ImgOpState
         {
             get => _imgOpState;
@@ -68,10 +75,14 @@ namespace TspUtil
             }
         }
 
+        
+
         public override string ToString()
         {
             return IsActived + "," + Des +","+ FnPath +","+ Cs;
         }
+
+
 
         public event PropertyChangedEventHandler PropertyChanged;
 

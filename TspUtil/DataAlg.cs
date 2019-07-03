@@ -16,12 +16,13 @@ namespace TspUtil
     /// </summary>
     public class DataBmpAlg
     {
-        private static readonly  ILog _log = LogManager.GetLogger("exlog");
+        private static readonly ILog _log = LogManager.GetLogger("exlog");
         private readonly Gbl _gbl;
         protected readonly Bitmap _img = null;
         protected readonly int _bmpHeaderLen = 54;
         protected readonly byte[] _srcHeaders = null;
         public readonly byte[] _srcData = null;
+        public byte[] _checkSum = null;
         private List<byte> _finalData = new List<byte>();
         private readonly List<byte>[] _exdata = null;
         private PadLoc _padLoc;
@@ -30,6 +31,7 @@ namespace TspUtil
         protected int _bpp = 4;
         private bool _reverseLine = false;
         private bool _usingSimData = false;
+        private bool _usingNoBanLst = false;
         private int _oddOffset = 0;
         private int _evenOffset = 0;
         private int _newCap = 0;
@@ -39,6 +41,8 @@ namespace TspUtil
         public int ImgHeight => _img.Height;
 
         public byte[] SrcHeaders => _srcHeaders;
+
+        public byte[] CheckSum => _checkSum;
 
         public PadLoc PadLoc => _padLoc;
 
@@ -51,6 +55,7 @@ namespace TspUtil
         public int OddOffset { get => _oddOffset; set => _oddOffset = value; }
         public int EvenOffset { get => _evenOffset; set => _evenOffset = value; }
         public string BinFileName { get => _binFileName; set => _binFileName = value; }
+        public bool UsingNoBanLst { get => _usingNoBanLst; set => _usingNoBanLst = value; }
 
         public DataBmpAlg(Gbl gbl, byte[] by, MaskForArgbItem oddmask, MaskForArgbItem evenmask, PadLoc padLoc)
         {
@@ -64,7 +69,7 @@ namespace TspUtil
             _oddOffset = _gbl.OddOffset;
             _evenOffset = _gbl.EvenOffset;
             _binFileName = _gbl.BinFileName;
-            
+            _usingNoBanLst = _gbl.UsingNoBoundLst;
 
             using (var ms = new MemoryStream(by, false))
             {
@@ -75,8 +80,9 @@ namespace TspUtil
                     _srcData = DecodeData();
                     _exdata = DataExtract(_srcData);
                     FinalData.AddRange(DataPackaging());
+                    // _checkSum = GetAllCheckSum(_srcData);
                 }
-                else if(_gbl.IsSerialSend)
+                else if (_gbl.IsSerialSend)
                 {
                     _srcData = new byte[by.Length];
                     Array.Copy(by, 0, _srcData, 0, by.Length);
@@ -97,7 +103,7 @@ namespace TspUtil
             int len = _srcData.Length / exp;
             for (int i = 0; i < len; i++)
             {
-                byte[] temp =new byte[256];
+                byte[] temp = new byte[256];
                 templst.AddRange(head);
                 Array.Copy(_srcData, i * exp, temp, 0, exp);
                 templst.AddRange(temp);
@@ -114,7 +120,7 @@ namespace TspUtil
                     templst.Add(hex[i % hex.Length]);
                 }
             }
-           
+
             return templst.ToArray();
         }
 
@@ -151,7 +157,7 @@ namespace TspUtil
             _img.UnlockBits(data);
             return srcs.ToArray();
         }
-     
+
         public static byte[] HexStringToByteArray(string s)
         {
             byte[] buffer = new byte[s.Length / 2];
@@ -180,7 +186,7 @@ namespace TspUtil
                         {
                             item.AddRange(_exdata[row + OddOffset].Take(exp));
                         }
-                        for (int col = 0; col < _gbl.ExpByteWidth  - _exdata[row + OddOffset].Count; col++)
+                        for (int col = 0; col < _gbl.ExpByteWidth - _exdata[row + OddOffset].Count; col++)
                         {
                             item.Add(hex[col % hex.Length]);
                         }
@@ -355,7 +361,14 @@ namespace TspUtil
 
             return lst;
         }
-
+        //C408软件中的d808checksum计算方式
+        public int[] ListBytes = new int[]
+        {
+            1,2,13,31,53,73,101,127,151,179,199,233,263,283,317,353,383,419,443,467,503,547,
+            577,607,641,661,701,739,769,811,839,877,911,947,983,1019,1049,1087,1109,1153,1193
+            ,1229,1277,1297,1321,1381,1429,1453,1487,1523,1559,1597,1619,1663,1699,1741,1783,1823,
+            1871,1901,1949,1993,2017,2063,2089,2131,2161,2221,2267,2293,2339,2371,2393
+        };
         //
         /// <summary>
         /// 数据提取，将期望的数据提取到list里面去
@@ -365,7 +378,8 @@ namespace TspUtil
         public List<byte>[] DataExtract(byte[] src)
         {
             var extractArr = new List<byte>[ImgHeight];
-
+            var rgData = new List<byte>();
+            var bgData = new List<byte>();
             Func<int, string, List<byte>> act = (row, expRgbA) =>
              {
                  //this argl is the expected pixel that every color vlue should be settled to the pixel
@@ -378,14 +392,35 @@ namespace TspUtil
                  {
                      var srcIndex = widthIdx * _bpp;
                      var len = (srcIndex + cap) < _bpp * ImgWidth ? cap : (_bpp * ImgWidth - srcIndex);
-                    
+                     var banLst = new List<int>();
+                     if (!UsingNoBanLst)
+                     {
+                         for (int i = 0; i < cap / _bpp; i++)// 
+                         {
+                             var cur = widthIdx + i + 1;
+                             if (ListBytes.Contains(row + 1))
+                             {
+                                 if (ListBytes.Contains(cur))
+                                 {
+                                     banLst.Add(i % (cap / _bpp));
+                                 }
+                             }
+                         }
+                     }
+                     else
+                     {
+                         for (int i = 0; i < cap / _bpp; i++)// 
+                         {
+                             banLst.Add(i % (cap / _bpp));
+                         }
+
+                     }
 
                      var resrc = new byte[len];
                      Array.ConstrainedCopy(src, srcIndex + row * ImgWidth * _bpp, resrc, 0, resrc.Length);
                      var fourData = GetData(resrc, argl);
-                    
 
-                    
+                     CheckSumColorModel(len, resrc, banLst, ref rgData, ref bgData);
                      lst.AddRange(fourData);
                  }
                  return lst;
@@ -404,11 +439,10 @@ namespace TspUtil
                 }
                 extractArr[row] = act(row, argl);
             }
-
+            _checkSum = GetNewCheckSum(rgData, bgData);
             return extractArr;
         }
 
-       
         /// <summary>
         /// 对argb的数据进行提取并保存到一个byte数组里面
         /// </summary>
@@ -428,7 +462,7 @@ namespace TspUtil
                     {
                         tempList.Add(src[n]);
                     }
-                } 
+                }
                 return tempList.ToArray<byte>();
             }
             else
@@ -436,8 +470,96 @@ namespace TspUtil
                 return src;
             }
         }
+
+
+        /// <summary>
+        /// 按照bgra数据排列的图片进行四字节提取，可移植
+        /// </summary>
+        /// <param name="capData">要提取的四字节数据</param>
+        /// <param name="argblst">bgr数据代表的排列列表</param>
+        /// <param name="n">指提取几个像素总字节数，比如两个像素是6字节，</param>
+        /// <param name="allow">根据查找到的数据，对所需要提取的数据像素指定是否要提取</param>
+        /// <returns>返回提取到的四字节数据中的数据</returns>
+
+        public List<byte> GetCheckSumData(byte[] capData, List<Argb> argblst, int n, List<int> allow)
+        {
+            var tmp = new List<byte>();
+            for (int i = 0; i < argblst.Count; i++)//0 1 2 3 
+            {
+                var _n = (int)i / n;//0 1
+                if (!allow.Contains(_n))
+                {
+                    continue;
+                }
+
+                var capFour = new byte[_bpp];
+                Array.ConstrainedCopy(capData, _n * _bpp, capFour, 0, _bpp);
+                var index = (int)argblst[i];
+                var data = capFour[index];
+                tmp.Add(data);
+            }
+            return tmp;
+        }
+        /// <summary>
+        /// 根据上文的数据进行数据模板创建和获取rgb数据
+        /// </summary>
+        /// <param name="len">单次提取数据的个数</param>
+        /// <param name="src">原数据</param>
+        /// <param name="allowLst">允许列表,根据像素数提取数据</param>
+        /// <param name="rgData"></param>
+        /// <param name="bgData"></param>
+        /// <returns>像素数</returns>
+        public int CheckSumColorModel(int len, byte[] src, List<int> allowLst, ref List<byte> rgData, ref List<byte> bgData)
+        {
+            int n = len / _bpp;
+            var rg = new List<Argb>();
+            var bg = new List<Argb>();
+            for (int i = 0; i < n; i++)
+            {
+                rg.Add(Argb.G);
+                rg.Add(Argb.R);
+                bg.Add(Argb.G);
+                bg.Add(Argb.B);
+            }
+
+            rgData.AddRange(GetCheckSumData(src, rg, n, allowLst));
+            bgData.AddRange(GetCheckSumData(src, bg, n, allowLst));
+            return n;
+        }
+        /// <summary>
+        /// 获取checksum的计算值
+        /// </summary>
+        /// <param name="rgData"></param>
+        /// <param name="bgData"></param>
+        /// <returns></returns>
+        public byte[] GetNewCheckSum(List<byte> rgData, List<byte> bgData)
+        {
+            Func<List<byte>, int> act = (src) =>
+            {
+                int sum = 0;
+                for (int i = 0; i < src.Count; i += 2)
+                {
+                    sum += src[i] * 256 + src[i + 1];
+                    if (sum > 65536)
+                    {
+                        sum -= 65536;
+                    }
+                }
+                sum = ~sum;
+                return sum;
+
+            };
+            byte[] CheckSum = new byte[8];
+            var checksumRg = new List<byte>();
+            var checksumBg = new List<byte>();
+            checksumRg.AddRange(BitConverter.GetBytes(act(rgData)));
+            checksumBg.AddRange(BitConverter.GetBytes(act(bgData)));
+            CheckSum[0] = checksumRg[0]; CheckSum[1] = checksumRg[1];
+            CheckSum[4] = checksumBg[0]; CheckSum[5] = checksumBg[1];
+            return CheckSum;
+        }
+
+
     }
-
-
 
 }
