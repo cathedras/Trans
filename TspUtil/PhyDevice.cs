@@ -22,7 +22,6 @@ namespace TspUtil
         private int _sendLngth;
         private CancellationTokenSource _cancelToken;
         private long _imgLenCount;
-        private Pcomm _pcom;
 
         public static byte[] StartBytes
         {
@@ -125,6 +124,15 @@ namespace TspUtil
             return lst;
         }
 
+        public bool Connected()
+        {
+            return false;
+        }
+
+        public bool Disconnect()
+        {
+            return false;
+        }
     }
     /// <summary>
     /// network using in this class if something need to be sent you think
@@ -222,7 +230,7 @@ namespace TspUtil
             {
                 sampleBytes = buffer.Take(buffer.Length).ToArray();
             }
-            var msg  = string.Join(" ", Array.ConvertAll(sampleBytes, input => $"{input:X2}"));
+            //var msg  = string.Join(" ", Array.ConvertAll(sampleBytes, input => $"{input:X2}"));
             //_log.Debug($"--> Len: {buffer.Length:D5}  Raw: {msg} ....");
 
             bool isFrameSendSuccess = false;
@@ -276,5 +284,204 @@ namespace TspUtil
             return lst;
         }
 
+        public bool Connected()
+        {
+            return _sock.Connected;
+        }
+
+        public bool Disconnect()
+        {
+            return false;
+        }
+    }
+
+    public class ClientNetDev : IDev
+    {
+        private TcpSocketEx _sock;
+        private readonly IViewModel _vm;
+        private ManualResetEvent _resetevent;
+        private List<byte> _header;
+        private List<byte> _finalList;
+        private int _sendLngth;
+        private CancellationTokenSource _cancelToken;
+        private bool _isReceiveNg;
+        private long _imgLenCount;
+        public static Regex picok = new Regex("pic ok", RegexOptions.IgnoreCase);
+        public static Regex picNG = new Regex("pic NG", RegexOptions.IgnoreCase);
+        public static Regex eraseOk = new Regex("erase ok", RegexOptions.IgnoreCase);
+        public static Regex eraseNG = new Regex("erase NG", RegexOptions.IgnoreCase);
+        public static Regex storeOk = new Regex("store ok", RegexOptions.IgnoreCase);
+        public static Regex storeNG = new Regex("store NG", RegexOptions.IgnoreCase);
+        public static Regex ddrstopOk = new Regex("ddrstop ok", RegexOptions.IgnoreCase);
+        public static Regex ddrstopNG = new Regex("ddrstop NG", RegexOptions.IgnoreCase);
+        public static Regex ddrOk = new Regex("ddr ok", RegexOptions.IgnoreCase);
+        public static Regex ddrNG = new Regex("ddr NG", RegexOptions.IgnoreCase);
+        public static Regex showok = new Regex("show ok", RegexOptions.IgnoreCase);
+        public static Regex showng = new Regex("show ng", RegexOptions.IgnoreCase);
+        public static Regex poweronok = new Regex("poweron ok", RegexOptions.IgnoreCase);
+        public static Regex poweronng = new Regex("poweron ng", RegexOptions.IgnoreCase);
+        public static Regex slaveResponse = new Regex("$p", RegexOptions.IgnoreCase);
+
+        public ClientNetDev(TcpSocketEx sock, IViewModel vm)
+        {
+            Sock = sock;
+            _vm = vm;
+
+            Sock.SendBufferSize =  1024 * 4;
+            Sock.ReceiveBufferSize = 1024 * 4;
+            Sock.NoDelay = true;
+            
+
+            _cancelToken = new CancellationTokenSource();
+            _resetevent = new ManualResetEvent(false);
+        }
+
+        public ManualResetEvent ResetEvent => _resetevent;
+
+        public List<byte> HeaderList
+        {
+            get => _header ?? (_header = new List<byte>());
+            set
+            {
+                _header = value;
+            }
+        }
+        public List<byte> FinalList
+        {
+            get { return _finalList; }
+            set
+            {
+                _finalList = value;
+            }
+        }
+        public int SendLength
+        {
+            get { return _sendLngth; }
+            set
+            {
+                _sendLngth = value;
+            }
+        }
+        public CancellationTokenSource CancelToken
+        {
+            get => _cancelToken;
+        }
+        public bool IsReceiveNg
+        {
+            get => _isReceiveNg;
+            set
+            {
+                _isReceiveNg = value;
+            }
+        }
+
+        public long LmgLenCount
+        {
+            get => _imgLenCount;
+            set
+            {
+                _imgLenCount = value;
+            }
+        }
+
+        public TcpSocketEx Sock { get => _sock; set => _sock = value; }
+
+        private static readonly ILog _log = LogManager.GetLogger("exlog");
+
+        private SemaphoreSlim _slim = new SemaphoreSlim(1);
+        private int _maxRetryCount = 1;
+        /// <summary>
+        /// ClientSend
+        /// </summary>
+        /// <param name="sendlst"></param>
+        /// <param name="offset"></param>
+        /// <param name="sendTimeOut"></param>
+        /// <returns></returns>
+        public bool DataSendFrame(byte[] sendlst, int offset, int sendTimeOut = 500)
+        {
+            byte[] sampleBytes = null;
+            if (sendlst.Length > 5)
+            {
+                sampleBytes = sendlst.Take(5).ToArray();
+            }
+            else
+            {
+                sampleBytes = sendlst.Take(sendlst.Length).ToArray();
+            }
+            var msg = string.Join(" ", Array.ConvertAll(sampleBytes, input => $"{input:X2}"));
+            //_log.Debug($"--> Len: {buffer.Length:D5}  Raw: {msg} ....");
+
+            bool isFrameSendSuccess = false;
+            _slim.Wait(Timeout.Infinite);
+            try
+            {
+                var count = 1;
+
+                while (count <= _maxRetryCount && !isFrameSendSuccess)
+                {
+                    _resetevent.Reset();
+                    IsReceiveNg = false;
+
+                    //_sock.GetStream().Write(buffer, 0, buffer.Length);
+                    //_sock.Send(sendlst, 0, sendlst.Length, SocketFlags.MaxIOVectorLength, out SocketError code);
+                    Sock.Send(sendlst);
+                    
+                    if (!_resetevent.WaitOne(sendTimeOut))
+                    {
+                        break;
+                    }
+
+                    isFrameSendSuccess = true;
+                    LmgLenCount += sendlst.Length;
+                }
+            }
+            catch (Exception x)
+            {
+                _log.Error(x.Message);
+            }
+
+            _slim.Release();
+
+            return isFrameSendSuccess;
+
+        }
+
+        public List<byte> Receive()
+        {
+            List<byte> lst = new List<byte>();
+
+            byte[] buf = new byte[512];
+
+            
+            int reclen = Sock.Receive(buf,SocketFlags.None);
+            if (reclen > 0)
+            {
+                byte[] temp = new byte[reclen];
+                Array.Copy(buf, 0, temp, 0, reclen);
+                lst.AddRange(temp);
+                //Console.WriteLine($"{string.Join($" ", Array.ConvertAll(temp, input => $"{input:X2}"))}:{Encoding.ASCII.GetString(temp)}");
+                _log.Debug($"<--- {string.Join($" ", Array.ConvertAll(temp, input => $"{input:X2}"))}:{Encoding.ASCII.GetString(temp)}");
+            }
+
+            return lst;
+        }
+
+        public bool Connected()
+        {
+            return _sock.ReceiveTimeout < 0;
+        }
+
+        public bool Disconnect()
+        {
+            _sock.Disconnect(true);
+            if (!_sock.Connected)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
     }
 }

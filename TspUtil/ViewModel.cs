@@ -76,19 +76,54 @@ namespace TspUtil
         private bool _isSerialSend = false;
         private bool _isNetWorkSend = false;
         private string _currentChooseFile=string.Empty;
-
+        private bool _isCrossData = false;
+        private bool _isInferiorData = false;
+        private string _regsTxt = string.Empty;
         private readonly static ILog _log = LogManager.GetLogger("exlog");
-
         //clients' attribute
         private readonly List<IDev> _clientRunList = new List<IDev>();
        // static VmParam _vmParam = new VmParam();
         private int _selectClientId = 0;
         private bool _usinSimData = false;
         private bool _usingNoBoundLst = false;
+        bool _isServerConnected = false;
+        bool _isCmdRun = false;
+        public string RegsTxt
+        {
+            get => _regsTxt;
+            set
+            {
+                if (value == _regsTxt) return;
+                _gbl.InferiorTxt = value;
+                _regsTxt = value.ToLower();
+                OnPropertyChanged();
+            }
+        }
+
+        public Gbl Gbl => _gbl;
+        public bool IsCmdRun
+        {
+            get => _isCmdRun;
+            set
+            {
+                if (value == _isCmdRun) return;
+                _isCmdRun = value;
+            }
+        }
         public string RdFile
         {
             get => _rdFile;
             set => _rdFile = value;
+        }
+        public bool IsServerConnected
+        {
+            get => _isServerConnected;
+            set
+            {
+                if (value == _isServerConnected) return;
+                _isServerConnected = value;
+                OnPropertyChanged();
+            }
         }
         public bool IsSerialSend
         {
@@ -131,6 +166,17 @@ namespace TspUtil
                 if (value == _selectSpeed) return;
                 _selectSpeed = value;
                 _gbl.SelectSpeed = value;
+                OnPropertyChanged();
+            }
+        }
+        public bool IsInferiorData
+        {
+            get => _isInferiorData;
+            set
+            {
+                if (value == _isInferiorData) return;
+                _isInferiorData = value;
+                _gbl.IsInferiorData = value;
                 OnPropertyChanged();
             }
         }
@@ -179,7 +225,17 @@ namespace TspUtil
                 OnPropertyChanged();
             }
         }
-
+        public bool IsCrossData
+        {
+            get => _isCrossData;
+            set
+            {
+                if (value == _isCrossData) return;
+                _isCrossData = value;
+                _gbl.IsCrossData = value;
+                OnPropertyChanged();
+            }
+        }
         public bool UsinSimData
         {
             get => _usinSimData;
@@ -273,14 +329,14 @@ namespace TspUtil
         //        OnPropertyChanged();
         //    }
         //}
-
-        public bool IsConnected
+       
+        public bool IsClientConnected
         {
-            get => _isConnected;
+            get => _isClientConnected;
             set
             {
-                if (value == _isConnected) return;
-                _isConnected = value;
+                if (value == _isClientConnected) return;
+                _isClientConnected = value;
                 OnPropertyChanged();
             }
         }
@@ -293,6 +349,14 @@ namespace TspUtil
                 if (value == _port) return;
                 _port = value;
                 OnPropertyChanged();
+            }
+        }
+        public string Address
+        {
+            get => _address;
+            set
+            {
+                _address = value;
             }
         }
 
@@ -448,32 +512,47 @@ namespace TspUtil
         /// <param name="level"></param>
         public void AddLogMsg(string msg, int level = 0)
         {
-           var dispatcher =  Application.Current?.Dispatcher;
-            if (dispatcher != null)
+            if (!IsCmdRun)
             {
-                if (dispatcher.CheckAccess())
+                var dispatcher = Application.Current?.Dispatcher;
+                if (dispatcher != null)
                 {
-                    LogItems.Add(new LogItem()
+                    if (dispatcher.CheckAccess())
                     {
-                        DateTime = DateTime.Now,
-                        Info = msg,
-                        Level = level
-                    });
-                    if (level > 0)
-                    {
-                        _log.Info(msg);
+                        LogItems.Add(new LogItem()
+                        {
+                            DateTime = DateTime.Now,
+                            Info = msg,
+                            Level = level
+                        });
+                        if (level > 0)
+                        {
+                            _log.Info(msg);
+                        }
+                        else
+                        {
+                            _log.Debug(msg);
+                        }
                     }
                     else
                     {
-                        _log.Debug(msg);
+                        dispatcher.Invoke(() =>
+                        {
+                            AddLogMsg(msg, level);
+                        });
+                       
                     }
                 }
-                else
-                {
-                    dispatcher.Invoke(() => { AddLogMsg(msg, level); });
-                }
             }
+            else
+            {
+                ConsoleDebug.AllocConsole();
+                ConsoleDebug.WriteLine(msg, ConsoleColor.Blue);
+                _log.Debug(msg);
+            }
+           
         }
+
 
         public void SaveDataFrame(string msg)
         {
@@ -553,7 +632,7 @@ namespace TspUtil
                 }
                 else //IsReceiveNg
                 {
-                    dev.SendLength = i / (4 * 64);
+                    dev.SendLength = i / _gbl.FrameRetrySize;//(4 * 64);
                     AddLogMsg($"数据发送成功，返回NG， 重新调整到 {dev.SendLength} 进行发送.", 1);
                 }
 
@@ -571,6 +650,167 @@ namespace TspUtil
             return sendState;
         }
        
+        private bool DataSendWithBlockRetry(byte[] data, int size, IDev dev, bool fillUp)
+        {
+
+            int length = (data.Length % size == 0)
+               ? data.Length / size
+               : (data.Length - data.Length % size) / size + 1;
+            bool sendState = true;
+            dev.SendLength = 0;
+
+            while (dev.SendLength < length)
+            {
+                var i = dev.SendLength;
+
+                var ct = dev.CancelToken.Token;
+                if (ct.IsCancellationRequested)
+                {
+                    sendState = false;
+                    break;
+                }
+
+                var dataBuffer = new byte[size];
+                var curDataLen = size;
+                if (data.Length < (i + 1) * size)
+                {
+                    //byte[] newSend = new byte[data.Length - (i) * size];
+                    curDataLen = data.Length - i * size;
+                    dataBuffer = new byte[size];
+                    if (!fillUp)
+                    {
+                        dataBuffer = new byte[curDataLen];
+                    }
+                }
+
+                Array.Copy(data, i * size, dataBuffer, 0, curDataLen);
+                if (!dev.DataSendFrame(dataBuffer, 0, 2 * 1000))
+                {
+                    sendState = false;
+                    break;
+                }
+                else if (!dev.IsReceiveNg)
+                {
+                    dev.SendLength++;
+                }
+                else //IsReceiveNg
+                {
+                    dev.SendLength = i / _gbl.FrameRetrySize;//(4 * 64);
+                }
+            }
+
+            return sendState;
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        public void CmdNetWorkSend()
+        {
+            byte[] erase = StringToByteArray("ddrstop");//DDR停止命令
+            byte[] show = StringToByteArray("show");
+            byte[] poweron = StringToByteArray("poweron");
+            if (ClientRunList.Any())
+            {
+                var tsks = ClientRunList.Select(pair => Task.Factory.StartNew(() =>
+                {
+                    if (pair.DataSendFrame(poweron, poweron.Length, _gbl.LongTimeoutForElapsed))
+                    {
+                        AddLogMsg("发送power on命令", 1);
+                    }
+                    // if (!DataSendFrame(erase, currentSockId, GblInfo.LongTimeoutForElapsed))
+                    if (!pair.DataSendFrame(erase, 0, GblInfo.LongTimeoutForElapsed))
+                    {
+                        AddLogMsg($"ddrstop指令发送失败, {pair}", 1);
+                    }
+                    else
+                    {
+                        for (int i = 0; i < ImgItemInfos.Count; i++)
+                        {
+                            foreach (var dev in ClientRunList)
+                            {
+                                dev.HeaderList = new List<byte>();
+                                dev.FinalList = new List<byte>();
+                                dev.LmgLenCount = 0;
+                            }
+
+                            if (!ActiveImgItem(ImgItemInfos[i], pair))
+                            {
+                                 AddLogMsg("解析失败！", 1);
+                                //PanelUnLock = true;
+                            }
+                            //data analyze
+                            else
+                            {
+                                var sw = new Stopwatch();
+                                sw.Start();
+
+                                var frameLen = _gbl.FrameLen;
+                                if (IsEthSim)
+                                {
+                                    _simp.WriteSperator();
+                                    _simp.WriteLogFile($"IMAGE DATA --> HL: {pair.HeaderList.Count} , DL: {pair.FinalList.Count}      {ImgItemInfos[i].Des}");
+                                    _simp.WriteSperator();
+                                    frameLen = _gbl.SimFrameLen;
+                                }
+
+                                if (!pair.DataSendFrame(pair.HeaderList.ToArray(), pair.HeaderList.Count))
+                                {
+                                    AddLogMsg("图片头发送失败，请重新发送", 1);
+                                }
+                                else if (!DataSendWithBlockRetry(pair.FinalList.ToArray(), frameLen, pair, true))
+                                {
+                                    AddLogMsg("图片数据发送失败，请重新发送", 1);
+                                }
+                                else
+                                {
+                                    
+
+
+                                    //List<byte> Checksum = new List<byte>();
+                                    //Checksum.AddRange(DataBmpAlg.HexStringToByteArray(ImgItemInfos[i].Cs));
+                                    // Array.Copy(Checksum.ToArray(), 0, send, picoff.Length, Checksum.ToArray().Length);
+                                    if (pair.DataSendFrame(poweron, poweron.Length, _gbl.LongTimeoutForElapsed))
+                                    {
+                                        AddLogMsg("发送power on命令", 1);
+                                    }
+                                    if (!pair.DataSendFrame(show, show.Length, _gbl.LongTimeoutForElapsed))
+                                    {
+                                         AddLogMsg("发送show命令", 1);
+                                    }
+                                    else
+                                    {
+                                        AddLogMsg($"图片{ImgItemInfos[i].Des} 发送完成,总共发送字节数：{pair.LmgLenCount}, 耗时 {sw.ElapsedMilliseconds:D6}ms");
+                                        ImgItemInfos[i].ImgOpState = ImgOpState.Success;
+                                    }
+                                   
+                                }
+
+                                sw.Stop();
+                            }
+
+                            if (ImgItemInfos[i].ImgOpState == ImgOpState.None)
+                                ImgItemInfos[i].ImgOpState = ImgOpState.Fail;
+                        }
+                    }
+                }));
+
+                Task.WaitAll(tsks.ToArray());
+            }
+            else
+            {
+                AddLogMsg("无网络设备连接，请连接设备后再发送", 1);
+            }
+        }
+
+
+        public void CmdPowerOn()
+        {
+            var tsks = ClientRunList.Select(pair => Task.Factory.StartNew(() =>
+            {
+                byte[] poweron = StringToByteArray("poweron");
+                pair.DataSendFrame(poweron, poweron.Length, _gbl.LongTimeoutForElapsed);
+            }));
+        }
         /// <summary>
         /// Send all bmpphoto by network. 
         /// </summary>
@@ -605,6 +845,7 @@ namespace TspUtil
                                     if (!ActiveImgItem(ImgItemInfos[i], pair))
                                     {
                                         AddLogMsg("解析失败！", 1);
+                                        PanelUnLock = true;
                                     }
                                     //data analyze
                                     else
@@ -755,11 +996,28 @@ namespace TspUtil
             head.AddRange(StringToByteArray(name));
             return head.ToArray();
         }
+        public byte[] CreateDDRHeadData(int picIndex, int size, int w, int h, string name = "")
+        {
+            List<byte> head = new List<byte>();
+            head.AddRange(StringToByteArray("ddr"));
+            head.Add(Convert.ToByte(picIndex));//4
+            head.AddRange(StringToByteArray("BM"));
+            head.AddRange(BitConverter.GetBytes(size));//get the picture's data length
+            if (IsAddSizeToHeader)
+            {
+                head.AddRange(BitConverter.GetBytes((ushort)w));
+                head.AddRange(BitConverter.GetBytes((ushort)h));
+            }
+            head.AddRange(StringToByteArray(name));
+            return head.ToArray();
+        }
+
+
 
         private readonly string _xmlCfgV2 = @"..\cfgv2.xml";
         public ViewModel()
         {
-            SwVersion = "1.0.3";
+            SwVersion = "1.0.4";
 #if DEBUG
             SwVersion = "0.0.0";
 #endif
@@ -779,7 +1037,8 @@ namespace TspUtil
             SelectSpeed = _gbl.SelectSpeed;
             LocalSerialComm();
             PadStr = _gbl.PadStr;
-            _gbl.IpAddress = LocalIPAddress();
+            Address = _gbl.RemoteIpAddress;
+            _gbl.LocalIpAddress = LocalIPAddress();
 
             Port = _gbl.Port;
             IsInverse = _gbl.IsInverse;
@@ -791,7 +1050,9 @@ namespace TspUtil
             IsNetWorkSend = _gbl.IsNetWorkSend;
             IsAddSizeToHeader = _gbl.IsAddSizeToHeader;
             HighLowBytesRevert = _gbl.HighLowBytesRevert;
-
+            IsCrossData = _gbl.IsCrossData;
+            IsInferiorData = _gbl.IsInferiorData;
+            RegsTxt = _gbl.InferiorTxt.ToUpper();
             OddMaskArgb.Add(new MaskForArgbItem(_gbl.OddRgbA));
             EvenMaskArgb.Add(new MaskForArgbItem(_gbl.EvenRgbA));
             if (File.Exists(_gbl.FileListXml))
@@ -801,7 +1062,7 @@ namespace TspUtil
            
 
         }
-
+       
         /// <summary>
         /// network connection lisenning
         /// </summary>
@@ -817,14 +1078,14 @@ namespace TspUtil
             {
                 new Task(new Action(delegate()
                 {
-                    while (true)
+                    while (true && !IsCmdRun)
                     {
-                        if (IsNetWorkSend && IsConnected)
+                        if (IsNetWorkSend && IsClientConnected)
                         {
                             SockListen();
                         }
                         Thread.Sleep(10);
-                    }
+                    }                   
                 })).Start();
             }
         }
@@ -900,7 +1161,7 @@ namespace TspUtil
             pXml.LoadObjListFromDb("File",ref allValue);
             foreach (var va in allValue)
             {
-                ImgItemInfos.Add(new ImgItemInfo()
+                ImgItemInfos.Add(new ImgItemUi()
                 {
                     IsActived = va.IsActived,
                     Cs=va.Cs,
@@ -937,6 +1198,164 @@ namespace TspUtil
             }
             return ipaddress;
         }
+        public void SockConnect()
+        {
+            DevInitUtil.ConnectToServer(GblInfo, out var server);
+            
+            if (server != null)
+            {
+                var dev = new ClientNetDev(server, this);
+                IsServerConnected = true;
+                ClientRunList.Add(dev);
+                AddLogMsg($"已成功连接到{Port}端口上的服务器{Address}");
+                //Application.Current.Dispatcher.Invoke(() =>
+                //{
+                //    ViewClients.Add(new ClientList(dev, ViewClients.Count, Address));
+                //});
+                ViewClients.Add(new ClientList(dev, ViewClients.Count, Address));
+                new Thread(obj =>
+                {
+                    var d = (IDev)obj;
+                    var revData = new List<byte>();
+                    //var ok = Encoding.ASCII.GetBytes("ok");
+                   // d.DataSendFrame(ok,0,ok.Length);
+                    while (ClientRunList.Contains(d))
+                    {
+                        try
+                        {
+                            var data = d.Receive();
+                            if (data.Any())
+                            {
+                                revData.AddRange(data);
+                                var tmpReceivingString = new List<string>();
+                                tmpReceivingString.Add(Encoding.ASCII.GetString(revData.ToArray()));
+                                revData.Clear();
+#if debug
+                                //AddLogMsg($"REV <-- {string.Join("", Array.ConvertAll(tmpReceivingString.ToArray(), p => p))}");
+#endif
+                                if (tmpReceivingString.Exists(p => ClientNetDev.picok.IsMatch(p)))
+                                {
+                                    d.ResetEvent.Set();
+                                }
+                                else if (tmpReceivingString.Exists(p => ClientNetDev.picNG.IsMatch(p)))
+                                {
+                                    d.IsReceiveNg = true;
+                                    d.ResetEvent.Set();
+                                }
+                                else if (tmpReceivingString.Exists(p => ClientNetDev.eraseOk.IsMatch(p)))
+                                {
+                                    d.ResetEvent.Set();
+                                }
+                                else if (tmpReceivingString.Exists(p => ClientNetDev.eraseNG.IsMatch(p)))
+                                {
+                                    //d.IsReceiveNg = true;
+                                    d.ResetEvent.Set();
+                                }
+                                else if (tmpReceivingString.Exists(p => ClientNetDev.storeOk.IsMatch(p)))
+                                {
+                                    d.ResetEvent.Set();
+                                }
+                                else if (tmpReceivingString.Exists(p => ClientNetDev.eraseNG.IsMatch(p)))
+                                {
+                                    //d.IsReceiveNg = true;
+                                    d.ResetEvent.Set();
+                                }else if (tmpReceivingString.Exists(p => ClientNetDev.ddrOk.IsMatch(p)))
+                                {
+                                    d.ResetEvent.Set();
+                                }
+                                else if (tmpReceivingString.Exists(p => ClientNetDev.ddrNG.IsMatch(p)))
+                                {
+                                    d.IsReceiveNg = true;
+                                    d.ResetEvent.Set();
+                                }
+                                else if (tmpReceivingString.Exists(p => ClientNetDev.ddrstopNG.IsMatch(p)))
+                                {
+                                    d.ResetEvent.Set();
+                                }
+                                else if (tmpReceivingString.Exists(p => ClientNetDev.ddrstopOk.IsMatch(p)))
+                                {
+                                    d.ResetEvent.Set();
+                                }
+                                else if (tmpReceivingString.Exists(p => ClientNetDev.showok.IsMatch(p)))
+                                {
+                                    d.ResetEvent.Set();
+                                }
+                                else if (tmpReceivingString.Exists(p => ClientNetDev.poweronok.IsMatch(p)))
+                                {
+                                    d.ResetEvent.Set();
+                                }
+                                else if (tmpReceivingString.Exists(p => ClientNetDev.showng.IsMatch(p)))
+                                {
+                                    d.ResetEvent.Set();
+                                }
+                                else if (tmpReceivingString.Exists(p => ClientNetDev.poweronng.IsMatch(p)))
+                                {
+                                    d.ResetEvent.Set();
+                                }
+                                else if (tmpReceivingString.Exists(p => ClientNetDev.slaveResponse.IsMatch(p)))
+                                {
+                                    d.ResetEvent.Set();
+                                }
+                                else
+                                {
+                                    Thread.Sleep(10);
+                                }
+                            }
+                            else
+                            {
+                                if (!d.Connected())
+                                {
+                                    IsServerConnected = false;
+                                    AddLogMsg("服务器已断开连接");
+                                    PanelUnLock = true;
+                                    ClientRunList.Remove(d);
+                                    for (var i = 0; i < ViewClients.Count; i++)
+                                    {
+                                        if (ViewClients[i].Dev == d)
+                                        {
+                                            ViewClients[i].IsOffLine = true;
+                                        }
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            AddLogMsg($"Rev ERR: {e.Message}", 1);
+
+                            ClientRunList.Remove(d);
+                            PanelUnLock = true;
+                            for (var i = 0; i < ViewClients.Count; i++)
+                            {
+                                if (ViewClients[i].Dev == d)
+                                {
+                                    ViewClients[i].IsOffLine = true;
+                                }
+                            }
+                        }
+                    }
+                })
+                { IsBackground = true, Priority = ThreadPriority.AboveNormal }.Start(dev);
+            }
+            else
+            {
+                IsServerConnected = false;
+                AddLogMsg($"连接服务器失败:{_gbl.RemoteIpAddress}:{_gbl.Port}",0);
+            }
+        }
+
+        public void SockDisconnect()
+        {
+            
+            if (ClientRunList.Any())
+            {
+                ClientRunList.RemoveAll(delegate (IDev item) {
+                    return true;
+                });
+            }
+        }
+
 
         /// <summary>
         /// open a task for listenning the background network connection
@@ -975,11 +1394,19 @@ namespace TspUtil
 
                                 //AddLogMsg($"REV <-- {string.Join("", Array.ConvertAll(tmpReceivingString.ToArray(), p => p))}");
 
-                                if (tmpReceivingString.Exists(p => NetDev.picok.IsMatch(p)))
+                                if (tmpReceivingString.Exists(p => ClientNetDev.picok.IsMatch(p)))
                                 {
                                     d.ResetEvent.Set();
                                 }
-                                else if (tmpReceivingString.Exists(p => NetDev.picNG.IsMatch(p)))
+                                else if (tmpReceivingString.Exists(p => ClientNetDev.picNG.IsMatch(p)))
+                                {
+                                    d.IsReceiveNg = true;
+                                    d.ResetEvent.Set();
+                                }else if (tmpReceivingString.Exists(p => ClientNetDev.eraseOk.IsMatch(p)))
+                                {
+                                    d.ResetEvent.Set();
+                                }
+                                else if (tmpReceivingString.Exists(p => ClientNetDev.eraseNG.IsMatch(p)))
                                 {
                                     d.IsReceiveNg = true;
                                     d.ResetEvent.Set();
@@ -1132,9 +1559,18 @@ namespace TspUtil
                         }
 
                         dev.FinalList = lstdata;
-                        dev.HeaderList.AddRange(
-                            CreateHeadData(imageIndex, data.FinalData.Count, w, h, imgItem.Des));
+                        if (!IsCmdRun)
+                        {
+                            dev.HeaderList.AddRange(
+                                CreateHeadData(imageIndex, data.FinalData.Count, w, h, imgItem.Des));
 
+                        }
+                        else
+                        {
+                            dev.HeaderList.AddRange(
+                                CreateDDRHeadData(imageIndex,data.FinalData.Count,w,h,imgItem.Des));
+                        }
+                        
                         AddLogMsg($"数据RawData 长度： {data.FinalData.Count}, 分辨 ： {w}, {h}", 1);
                     }
 
@@ -1160,17 +1596,15 @@ namespace TspUtil
             return res;
         }
 
-        public void StartDrag(object sender, System.Windows.DragEventArgs e)
+
+        public void ClearSendList()
         {
-            AddLogMsg("start drag ");
+            ImgItemInfos.Clear();
+            if (File.Exists(_gbl.FileListXml))
+            {
+                XmlDelete(_gbl.FileListXml);
+            }
         }
-        public void StopDrag(object sender, System.Windows.DragEventArgs e)
-        {
-            AddLogMsg("stop drag");
-        }
-
-
-
 
         private ICommand _imgItemSelectionChangedCmd;
         public ICommand ImgItemSelectionChangedCmd
@@ -1178,7 +1612,7 @@ namespace TspUtil
             get => _imgItemSelectionChangedCmd ?? (_imgItemSelectionChangedCmd = new RelayCommand(delegate (object obj)
             {
                 var param = obj as ExCommandParameter;
-                if (param?.Parameter is ImgItemInfo info)
+                if (param?.Parameter is ImgItemUi info)
                 {
                     foreach (var imgItemInfo in ImgItemInfos)
                     {
@@ -1216,11 +1650,7 @@ namespace TspUtil
         {
             get => _openFdClearCmd ?? (_openFdClearCmd = new RelayCommand(delegate (object obj)
             {
-                ImgItemInfos.Clear();
-                if (File.Exists(_gbl.FileListXml))
-                {
-                    XmlDelete(_gbl.FileListXml);
-                }
+                ClearSendList();
                 AddLogMsg("已清除所有文件");
                 ProgressData = 0;
             }, pre =>
@@ -1228,7 +1658,6 @@ namespace TspUtil
                 return true;
             }));
         }
-
 
         private ICommand _openFdCmd;
         public ICommand OpenFdCmd
@@ -1246,7 +1675,7 @@ namespace TspUtil
                     {
                         ofd.FileNames.ToList().ForEach(p =>
                         {
-                            ImgItemInfos.Add(new ImgItemInfo()
+                            ImgItemInfos.Add(new ImgItemUi()
                             {
                                 IsActived = true,
                                 FnPath = Path.GetFullPath(p),
@@ -1257,7 +1686,7 @@ namespace TspUtil
                     }
                     else
                     {
-                        ImgItemInfos.Add(new ImgItemInfo()
+                        ImgItemInfos.Add(new ImgItemUi()
                         {
                             IsActived = true,
                             FnPath = Path.GetFullPath(ofd.FileName),
@@ -1269,20 +1698,29 @@ namespace TspUtil
             }));
         }
 
+        private ICommand _serverConnect;
+        public ICommand ServerConnect
+        {
+            get => _serverConnect ?? (_serverConnect = new RelayCommand(delegate (object obj)
+            {
+                SockConnect();
+            }));
+        }
+
         private ICommand _sendItemsCmd;
-        private bool _isConnected;
+        private bool _isClientConnected;
         private bool _isAddSizeToHeader;
 
         private readonly TxtSimpLog _simp = new TxtSimpLog(Encoding.ASCII);
+        private string _address;
         private int _port;
         private bool _highLowBytesRevert;
-
         public ICommand SendItemsCmd
         {
             get => _sendItemsCmd ?? (_sendItemsCmd = new RelayCommand(delegate (object obj)
             {
                 LogItems.Clear();
-
+                
                 ProgressData = 0;
                 AddLogMsg($"开始数据发送...");
                 
@@ -1325,7 +1763,6 @@ namespace TspUtil
             }));
         }
 
-        
         private ICommand _itemsMoveUp;
         public ICommand ItemsMoveUp
         {
@@ -1380,6 +1817,5 @@ namespace TspUtil
 
             }));
         }
-        
     }
 }

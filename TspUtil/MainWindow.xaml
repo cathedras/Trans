@@ -11,7 +11,8 @@
         xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
         xmlns:util="clr-namespace:ElCommon.Util;assembly=Util"
         mc:Ignorable="d" Margin="4" Background="{Binding ElementName=mainGrid, Path=Background}"
-        Title="TSP MYZY调试助手">
+        Title="TSP MYZY调试助手" d:DesignHeight="674.667" d:DesignWidth="977.334">
+    <!--Visibility="{Binding Vm.ShowOrHide, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"-->
 
     <Window.Resources>
         <ResourceDictionary>
@@ -36,7 +37,7 @@
 
         <Menu Grid.Row="0" HorizontalAlignment="Right" Margin="0,2,2,2" Background="{StaticResource CtlBkBrush}" Width="76">
             <MenuItem Header="操作">
-                <MenuItem Header="服务监视" IsCheckable="True" IsChecked="{Binding Path=Vm.IsConnected, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"/>
+                <MenuItem Header="服务器监视" IsCheckable="True" IsChecked="{Binding Path=Vm.IsClientConnected, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"/>
             </MenuItem>
             <MenuItem Header="关于"></MenuItem>
         </Menu>
@@ -58,7 +59,11 @@
             <StatusBarItem HorizontalAlignment="Center">
                 <WrapPanel>
                     <TextBlock Text="设备状态："></TextBlock>
-                    <TextBlock Text="{Binding Vm.IsConnected, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"></TextBlock>
+
+                    <TextBlock Text="客户端："></TextBlock>
+                    <TextBlock Text="{Binding Vm.IsClientConnected, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"></TextBlock>
+                    <TextBlock Text="服务器："></TextBlock>
+                    <TextBlock Text="{Binding Vm.IsServerConnected, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"></TextBlock>
                 </WrapPanel>
             </StatusBarItem>
 
@@ -109,9 +114,7 @@
                                   Grid.ColumnSpan="2"
                                   AllowDrop="True"
                                   
-                                  SelectionMode="Extended"
-                                  
-                                  >
+                                  SelectionMode="Extended">
                                 <i:Interaction.Triggers>
                                     <i:EventTrigger EventName="SelectionChanged">
                                         <util:ExInvokeCommandAction Command="{Binding Vm.ImgItemSelectionChangedCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" CommandParameter="{Binding ElementName=imgItemCtls, Path=SelectedItem}"></util:ExInvokeCommandAction>
@@ -192,17 +195,18 @@
                                         <Setter Property="Width" Value="50"></Setter>
                                     </Style>
                                 </UniformGrid.Resources>
-                                <Button Command="{Binding Vm.OpenFdClearCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">清空</Button>
-                                <Button Command="{Binding Vm.OpenFdCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">打开</Button>
-                                <Button Command="{Binding Vm.SendItemsCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">发送</Button>
-                                <Button Command="{Binding Vm.ItemsMoveUp, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">上移</Button>
-                                <Button Command="{Binding Vm.ItemsMoveDown, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">下移</Button>
+                                <Button Margin="3" Command="{Binding Vm.OpenFdClearCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">清空</Button>
+                                <Button Margin="3" Command="{Binding Vm.OpenFdCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">打开</Button>
+                                <Button Margin="3" Command="{Binding Vm.SendItemsCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">发送</Button>
+                                <Button Margin="3" Command="{Binding Vm.ItemsMoveUp, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">上移</Button>
+                                <Button Margin="3" Command="{Binding Vm.ItemsMoveDown, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">下移</Button>
+                                <Button Margin="3" Command="{Binding Vm.ServerConnect, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">连接</Button>
                             </UniformGrid>
-                            <UniformGrid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,28.5,0,0.5" Grid.RowSpan="2">
+                            <UniformGrid Grid.Row="1" Grid.ColumnSpan="2"  Margin="0,28.5,0,0.5" Grid.RowSpan="2">
                                 <ListBox Background="{StaticResource CtlBkBrush}" 
                                          ItemsSource="{Binding Vm.ViewClients, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"
                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                         Name="Item">
+                                         Name="Item" Margin="0,29,0,0">
 
                                     <!--<i:Interaction.Triggers>
                                         <i:EventTrigger EventName="SelectionChanged">
@@ -415,12 +419,23 @@
                                                 <RowDefinition Height="30px"></RowDefinition>
                                                 <RowDefinition Height="30px"></RowDefinition>
                                                 <RowDefinition Height="30px"></RowDefinition>
+                                                <RowDefinition Height="30px"></RowDefinition>
+                                                <RowDefinition Height="30px"></RowDefinition>
+                                                <RowDefinition Height="30px"></RowDefinition>
                                             </Grid.RowDefinitions>
                                             <CheckBox VerticalAlignment="Center" Grid.Row="0" IsChecked="{Binding Vm.IsInverse, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">上下翻转图片</CheckBox>
                                             <CheckBox VerticalAlignment="Center" Grid.Row="1" IsChecked="{Binding Vm.HighLowBytesRevert, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">数据字节高低位反转</CheckBox>
                                             <CheckBox VerticalAlignment="Center" Grid.Row="2"  IsChecked="{Binding Vm.IsAddSizeToHeader, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">头数据包含分辨信息</CheckBox>
                                             <CheckBox VerticalAlignment="Center" Grid.Row="3" IsChecked="{Binding Vm.UsinSimData, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">使用模拟数据(必须选择一张图片获取分辨率)</CheckBox>
                                             <CheckBox VerticalAlignment="Center" Grid.Row="4" IsChecked="{Binding Vm.UsingNoBoundLst, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">CheckSum不使用约束列表</CheckBox>
+                                            <CheckBox VerticalAlignment="Center" Grid.Row="5" IsChecked="{Binding Vm.IsCrossData, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">像素交叉</CheckBox>
+                                            <CheckBox VerticalAlignment="Center" Grid.Row="6" IsChecked="{Binding Vm.IsInferiorData, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" Content="图片校正"></CheckBox>
+                                            <TextBlock Grid.Row="6" Margin="102,7,132,7" Width="Auto" RenderTransformOrigin="0.5,0.5">填补数据：</TextBlock>
+                                            <xctk:WatermarkTextBox Grid.Row="6" Watermark="FF" Text="{Binding Vm.RegsTxt, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}" Margin="173,0,0,0">
+                                                <i:Interaction.Behaviors>
+                                                    <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
+                                                </i:Interaction.Behaviors>
+                                            </xctk:WatermarkTextBox>
                                         </Grid>
                                     </Expander>
                                 </StackPanel>

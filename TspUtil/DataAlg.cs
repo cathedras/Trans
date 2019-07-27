@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -36,6 +37,8 @@ namespace TspUtil
         private int _evenOffset = 0;
         private int _newCap = 0;
         private string _binFileName = string.Empty;
+        private bool _isCross = true;
+        private bool _isInferior = false;
         public int ImgWidth => _img.Width;
 
         public int ImgHeight => _img.Height;
@@ -56,7 +59,10 @@ namespace TspUtil
         public int EvenOffset { get => _evenOffset; set => _evenOffset = value; }
         public string BinFileName { get => _binFileName; set => _binFileName = value; }
         public bool UsingNoBanLst { get => _usingNoBanLst; set => _usingNoBanLst = value; }
+        public bool IsCross { get => _isCross; set => _isCross = value; }
+        public bool IsInferior { get => _isInferior; set => _isInferior = value; }
 
+        Stopwatch st = new Stopwatch();
         public DataBmpAlg(Gbl gbl, byte[] by, MaskForArgbItem oddmask, MaskForArgbItem evenmask, PadLoc padLoc)
         {
             _gbl = gbl;
@@ -70,9 +76,11 @@ namespace TspUtil
             _evenOffset = _gbl.EvenOffset;
             _binFileName = _gbl.BinFileName;
             _usingNoBanLst = _gbl.UsingNoBoundLst;
-
+            _isCross = _gbl.IsCrossData;
+            _isInferior = _gbl.IsInferiorData;
             using (var ms = new MemoryStream(by, false))
             {
+                
                 if (_gbl.IsNetWorkSend)
                 {
                     Array.Copy(by, 0, _srcHeaders, 0, _bmpHeaderLen);
@@ -80,7 +88,6 @@ namespace TspUtil
                     _srcData = DecodeData();
                     _exdata = DataExtract(_srcData);
                     FinalData.AddRange(DataPackaging());
-                    // _checkSum = GetAllCheckSum(_srcData);
                 }
                 else if (_gbl.IsSerialSend)
                 {
@@ -173,18 +180,19 @@ namespace TspUtil
             var data = new byte[_gbl.ExpByteHeight, _gbl.ExpByteWidth];
             var hex = HexStringToByteArray(_gbl.PadStr);
             var packageData = new List<byte>();
-            if (PadLoc == PadLoc.Left)
+            if (PadLoc == PadLoc.Left) //图片在左，空白在右下E:\GitNew\TspUtil\TspUtil\DataAlg.cs
             {
-                for (int row = 0; row < _gbl.ExpByteHeight; row += 2)
+                for (int row = 0; row < _gbl.ExpByteHeight; row += 2)//每两行处理一次
                 {
                     var item = new List<byte>();
-                    if (row < ImgHeight)
+                    if (row < ImgHeight)//在原图最大行数之内
                     {
+                        //需要填充的数据个数=预期的图片宽度-原图片宽度
                         var exp = _gbl.ExpByteWidth - item.Count;
                         //添加偶行(物理意义的奇行)
-                        if (OddOffset == 0 && EvenOffset == 0)
+                        if (OddOffset == 0 && EvenOffset == 0)//Offset 为奇偶行调换的意思
                         {
-                            item.AddRange(_exdata[row + OddOffset].Take(exp));
+                            item.AddRange(_exdata[row + OddOffset].Take(exp));//添加一行
                         }
                         for (int col = 0; col < _gbl.ExpByteWidth - _exdata[row + OddOffset].Count; col++)
                         {
@@ -201,7 +209,7 @@ namespace TspUtil
                             item.Add(hex[col % hex.Length]);
                         }
                     }
-                    else
+                    else//超过原图并且在预期之内
                     {
                         for (int col = 0; col < _gbl.ExpByteWidth; col++)
                         {
@@ -231,9 +239,9 @@ namespace TspUtil
                     }
                 }
             }
-            else
+            else//图片在右，空白在左下
             {
-                for (int row = 0; row < _gbl.ExpByteHeight; row += 2)
+                for (int row = 0; row < _gbl.ExpByteHeight; row += 2)//每两行处理一次
                 {
                     var item = new List<byte>();
                     if (row < ImgHeight)
@@ -246,7 +254,7 @@ namespace TspUtil
                         {
                             item.AddRange(oddRow);
                         }
-                        else if (OddOffset == 0 && EvenOffset < 0)
+                        else if (OddOffset == 0 && EvenOffset < 0)//印象中是为了兼容c408的数据
                         {
                             for (int widIdx = 0; widIdx < _gbl.ExpByteWidth - 4; widIdx += _newCap)
                             {
@@ -377,59 +385,59 @@ namespace TspUtil
         /// <returns></returns>
         public List<byte>[] DataExtract(byte[] src)
         {
+            var halfInperiorIndex = _gbl.InfriorHalf;
             var extractArr = new List<byte>[ImgHeight];
             var rgData = new List<byte>();
             var bgData = new List<byte>();
+            var halfImgForCross = IsInferior ? _gbl.HalfImageIndex : (ImgWidth / 2) - 1;//图片一行中的一半的前一个数据，图片须为偶数列width为偶数
             Func<int, string, List<byte>> act = (row, expRgbA) =>
-             {
-                 //this argl is the expected pixel that every color vlue should be settled to the pixel
-                 var argl = ArgbItemHelper.PraseArgbText(expRgbA);
-                 //The next argl is what the user want to catch the pixels' number, in theory, the number that user want is no end.
-                 var cap = (argl.Max(p => p.Idx) + 1) * _bpp;
-                 _newCap = argl.Count;
-                 var lst = new List<byte>();
-                 for (int widthIdx = 0; widthIdx < ImgWidth; widthIdx += cap / _bpp)
-                 {
-                     var srcIndex = widthIdx * _bpp;
-                     var len = (srcIndex + cap) < _bpp * ImgWidth ? cap : (_bpp * ImgWidth - srcIndex);
-                     var banLst = new List<int>();
-                     if (!UsingNoBanLst)
-                     {
-                         for (int i = 0; i < cap / _bpp; i++)// 
-                         {
-                             var cur = widthIdx + i + 1;
-                             if (ListBytes.Contains(row + 1))
-                             {
-                                 if (ListBytes.Contains(cur))
-                                 {
-                                     banLst.Add(i % (cap / _bpp));
-                                 }
-                             }
-                         }
-                     }
-                     else
-                     {
-                         for (int i = 0; i < cap / _bpp; i++)// 
-                         {
-                             banLst.Add(i % (cap / _bpp));
-                         }
+            {
+                var tmplst = new List<byte>();
+                var argl = ArgbItemHelper.PraseArgbText(expRgbA);//将从界面获取的argb数据转换成数组
+                var cap = (argl.Max(p => p.Idx) + 1) * _bpp;   //计算界面中获取的像素index，计算数据个数
+                _newCap = argl.Count;               //计算界面像素个数
+                var lst = new List<byte>();
+                var gap = cap / _bpp;               //统计像素个数
+                var allLineByte = _bpp * ImgWidth;  //每行的数据个数
+                var intenal = row * allLineByte;    //行开头第一个的数据索引
 
-                     }
+                for (int widthIdx = 0; widthIdx < ImgWidth; widthIdx += gap)
+                {
+                    var srcIndex = widthIdx * _bpp; //当前的像素索引
+                    var len = (srcIndex + cap) < allLineByte ? cap : (allLineByte - srcIndex);//判断当前像苏数据是否超过本行最后一个数据
+                    var banLst = GetBanLst(gap, widthIdx, row);
 
-                     var resrc = new byte[len];
-                     Array.ConstrainedCopy(src, srcIndex + row * ImgWidth * _bpp, resrc, 0, resrc.Length);
-                     var fourData = GetData(resrc, argl);
+                    var resrc = new byte[len];
+                    Array.ConstrainedCopy(src, srcIndex + intenal, resrc, 0, resrc.Length);//从当前数据开始取lenth个，开始计算
+                    var fourData = GetData(resrc, argl);//对数据进行排序后输出
+                                                        //获取checkSum数据
 
-                     CheckSumColorModel(len, resrc, banLst, ref rgData, ref bgData);
-                     lst.AddRange(fourData);
-                 }
-                 return lst;
-             };
+                    CheckSumColorModel(len, resrc, banLst, ref rgData, ref bgData);
 
+                    if (IsCross)
+                    {
+                        DataCrossing(fourData, halfImgForCross, widthIdx, ref tmplst, ref lst);//数据交叉
+                    }
+                    else if (IsInferior)
+                    {
+                        DataInferiorAlg(fourData, widthIdx, halfInperiorIndex, halfImgForCross, ref tmplst, ref lst);
+                    }
+                    else
+                    {
+                        lst.AddRange(fourData);//直接添加
+                    }
+                }
+                if (IsInferior)
+                    lst.AddRange(tmplst);
+                return lst;
+            };
             for (int row = 0; row < ImgHeight; row++)
             {
+                //var rand = new Random();
+                //rgData.Add((byte)rand.Next(0,255));
+                //bgData.Add((byte)rand.Next(0,255));
                 var argl = OddMask.ExpRGBA;
-                if ((row + 1) % 2 == 1)
+                if ((row + 1) % 2 == 1)//偶行的数据或者奇数行数据
                 {
                     argl = OddMask.ExpRGBA;
                 }
@@ -439,25 +447,50 @@ namespace TspUtil
                 }
                 extractArr[row] = act(row, argl);
             }
-            _checkSum = GetNewCheckSum(rgData, bgData);
+            //计算checksum
+            _checkSum = GetNewCheckSum(rgData, bgData);//计算checkSum,校验和
             return extractArr;
         }
-
-        /// <summary>
+        public List<int> GetBanLst(int gap,int widthIdx,int row)
+        {
+            var banLst = new List<int>();
+            if (!UsingNoBanLst)//使用列表规则数据，只计算列表规则数据，
+            {
+                for (int i = 0; i < gap; i++)// 
+                {
+                    var cur = widthIdx + i + 1;
+                    if (ListBytes.Contains(row + 1))
+                    {
+                        if (ListBytes.Contains(cur))
+                        {
+                            banLst.Add(i % gap);//该列表对所取到的数据进行允许计算，就是一些序号。0，1，2，3取决于一次性取到几个像素
+                        }
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 0; i < gap; i++)// 不使用列表，所有数据都计算一遍
+                {
+                    banLst.Add(i % gap);
+                }
+            }
+            return banLst;
+        }
+        /// <summary> 
         /// 对argb的数据进行提取并保存到一个byte数组里面
         /// </summary>
         /// <param name="src"></param>
         /// <param name="argblst"></param>
-        /// <returns></returns>
+        /// <returns>O(N)</returns>
         public byte[] GetData(byte[] src, List<ArgbItem> argblst)
         {
-            var maxIndex = argblst.Max(p => p.Idx);
             if (argblst.Count != 0)
             {
                 var tempList = new List<byte>();
-                for (int i = 0; i < argblst.Count; i++)
-                {
-                    var n = argblst[i].Idx * _bpp + (int)argblst[i].ArgbValue;
+                foreach (var argb in argblst)
+                { 
+                    var n = argb.Idx * _bpp + (int)argb.ArgbValue;
                     if (n < src.Length)//处理索引越界问题
                     {
                         tempList.Add(src[n]);
@@ -470,8 +503,57 @@ namespace TspUtil
                 return src;
             }
         }
+        /// <summary>
+        /// 执行数据交叉，把后一半的数据间隔插入到前一半中
+        /// </summary>
+        /// <param name="src">源数据</param>
+        /// <param name="halfImg">图片的一半的索引</param>
+        /// <param name="index">当前处理的像素索引</param>
+        /// <param name="tmpLst">中间数组</param>
+        /// <param name="outLst">最终数组O(3n)</param>
+        public void DataCrossing(byte[] src,int halfImg,int index,ref List<byte> tmpLst,ref List<byte> outLst)
+        {
+            
+            if (index > halfImg)//
+            {
+                int nextIndex = index - halfImg - 1;
+                if (nextIndex < 451)
+                {
+                    for (int i = 0; i < _bpp; i++)
+                    {
+                        outLst.Add(tmpLst[nextIndex * _bpp + i]);
+                    }
+                    outLst.AddRange(src);
+                } 
+            }
+            else
+            {
+                tmpLst.AddRange(src);
+            }
+        }
 
 
+        public void DataInferiorAlg(byte[] src, int index, int inferior, int halfImg, ref List<byte> tmpLst, ref List<byte> outLst)
+        {
+            //int nextIndex = index - halfImg - 1;
+            if (index < inferior)
+            {
+                outLst.AddRange(src);
+            }
+            else if (index >= inferior && index < halfImg)
+            {
+                for (int i = 0; i < _bpp; i++)
+                {
+                    var txt = HexStringToByteArray(_gbl.InferiorTxt);
+                    outLst.AddRange(txt);
+                }
+                tmpLst.AddRange(src);
+            }
+            else if (index >= halfImg)
+            {
+                tmpLst.AddRange(src);
+            }       
+        }
         /// <summary>
         /// 按照bgra数据排列的图片进行四字节提取，可移植
         /// </summary>
@@ -479,7 +561,7 @@ namespace TspUtil
         /// <param name="argblst">bgr数据代表的排列列表</param>
         /// <param name="n">指提取几个像素总字节数，比如两个像素是6字节，</param>
         /// <param name="allow">根据查找到的数据，对所需要提取的数据像素指定是否要提取</param>
-        /// <returns>返回提取到的四字节数据中的数据</returns>
+        /// <returns>返回提取到的四字节数据中的数据O(N)</returns>
 
         public List<byte> GetCheckSumData(byte[] capData, List<Argb> argblst, int n, List<int> allow)
         {
@@ -508,7 +590,7 @@ namespace TspUtil
         /// <param name="allowLst">允许列表,根据像素数提取数据</param>
         /// <param name="rgData"></param>
         /// <param name="bgData"></param>
-        /// <returns>像素数</returns>
+        /// <returns>像素数O(N)</returns>
         public int CheckSumColorModel(int len, byte[] src, List<int> allowLst, ref List<byte> rgData, ref List<byte> bgData)
         {
             int n = len / _bpp;
@@ -531,7 +613,7 @@ namespace TspUtil
         /// </summary>
         /// <param name="rgData"></param>
         /// <param name="bgData"></param>
-        /// <returns></returns>
+        /// <returns>O(3N)</returns>
         public byte[] GetNewCheckSum(List<byte> rgData, List<byte> bgData)
         {
             Func<List<byte>, int> act = (src) =>
@@ -540,7 +622,7 @@ namespace TspUtil
                 for (int i = 0; i < src.Count; i += 2)
                 {
                     sum += src[i] * 256 + src[i + 1];
-                    if (sum > 65536)
+                    if (65536 < sum)
                     {
                         sum -= 65536;
                     }
@@ -558,8 +640,6 @@ namespace TspUtil
             CheckSum[4] = checksumBg[0]; CheckSum[5] = checksumBg[1];
             return CheckSum;
         }
-
-
     }
 
 }

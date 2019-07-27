@@ -47,5 +47,8 @@ namespace TspUtil
 
         bool DataSendFrame(byte[] sendlst, int offset,int sendTimeOut = 500);
         List<byte> Receive();
+
+        bool Connected();
+        bool Disconnect();
     }
 }

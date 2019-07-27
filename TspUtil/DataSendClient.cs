@@ -175,6 +175,7 @@ namespace TspUtil
                 _log.Debug($"Start TCP Listen...");
                 //check the client's connection by cycle
                 tcpClient = _tcpListener.AcceptTcpClient();
+                
 
                 _log.Debug($@"TCP Listen <----- {tcpClient}");
             }
@@ -202,5 +203,23 @@ namespace TspUtil
             return true;
         }
 
+        public static void ConnectToServer(Gbl gbl,out TcpSocketEx tcp)
+        {
+            var client = new TcpSocketEx(gbl.RemoteIpAddress,gbl.Port);
+            try
+            {
+                client.Connect(IPAddress.Parse(gbl.RemoteIpAddress), gbl.Port);
+                tcp = client;
+            }
+            catch(Exception e)
+            {
+                tcp = null;
+            }           
+        }
+
+        public static void ReleaseConnection(TcpSocketEx client)
+        {
+            client.Disconnect(false);
+        }
     }
 }

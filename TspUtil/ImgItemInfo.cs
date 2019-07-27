@@ -10,7 +10,16 @@ using System.Xml;
 
 namespace TspUtil
 {
-    public class ImgItemInfo  : INotifyPropertyChanged
+    public interface ImgItemInfo
+    {
+        bool IsActived { set; get; }
+        string Des { set; get; }
+        string FnPath { set; get; }
+        string Cs { set; get; }
+        ImgOpState ImgOpState { set; get; }
+
+    }
+    public class ImgItemUi  : INotifyPropertyChanged,ImgItemInfo
     {
         private bool _isActived;
         private string _des;
@@ -92,7 +101,71 @@ namespace TspUtil
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
+    public class ImgItemCmd :ImgItemInfo
+    {
+        private bool _isActived;
+        private string _des;
+        private string _fnPath;
+        private string _cs;
+        private ImgOpState _imgOpState;
 
+
+        public ImgOpState ImgOpState
+        {
+            get => _imgOpState;
+            set
+            {
+                if (value == _imgOpState) return;
+                _imgOpState = value;
+            }
+        }
+
+
+        public bool IsActived
+        {
+            get => _isActived;
+            set
+            {
+                if (value == _isActived) return;
+                _isActived = value;
+            }
+        }
+
+        public string Des
+        {
+            get => _des;
+            set
+            {
+                if (value == _des) return;
+                _des = value;
+            }
+        }
+
+        public string FnPath
+        {
+            get => _fnPath;
+            set
+            {
+                if (value == _fnPath) return;
+                _fnPath = value;
+            }
+        }
+
+        public string Cs
+        {
+            get => _cs;
+            set
+            {
+                if (value == _cs) return;
+                _cs = value;
+            }
+        }
+
+        public override string ToString()
+        {
+            return IsActived + "," + Des + "," + FnPath + "," + Cs;
+        }
+    }
     public enum ImgOpState
     {
         None,

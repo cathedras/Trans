@@ -34,13 +34,19 @@ namespace TspUtil
             IsNetWorkSend = false;
             IsEthSim = false;
             UsingSimData = false;
-            IpAddress = "127.0.0.1";
+            LocalIpAddress = "127.0.0.1";
+            RemoteIpAddress = "127.0.0.1";
             Port = 8080;
             IsInverse = false;
             IsAddSizeToHeader = true;
             UsingNoBoundLst = false;
+            IsCrossData = false;
+            IsInferiorData = false;
             //Todo
             FileListXml = "FileInfoItem.xml";
+            InfriorHalf = 900;
+            HalfImageIndex = 912;
+            InferiorTxt = "ff";
         }
 
         [SectionName("PIC")] public int ClientWidth { get; set; }
@@ -70,15 +76,25 @@ namespace TspUtil
         public bool IsEthSim { get; set; }
         public int SimFrameLen { get; set; } = 1024;
         public int FrameLen { get; set; } = 1024;
+        public int FrameRetrySize { get; set; } = 4 * 64;
+        public int SendBufferSize { get; set; } = 1024 * 4;
         public bool UsingSimData { get; set; }
-        [SectionName("NETWORK")] public string IpAddress { get; set; }
+        [SectionName("NETWORK")] public string LocalIpAddress { get; set; }
+        [SectionName("NETWORK")] public string RemoteIpAddress { get; set; }
         [SectionName("NETWORK")] public int Port { get; set; }
         public bool IsInverse { get; set; }
 
         public bool IsAddSizeToHeader { get; set; }
         public bool UsingNoBoundLst { get; set; }
+        public bool IsCrossData { get; set; }
+        public bool IsInferiorData { get; set; }
         public string FileListXml { get; set; }
+        public int InfriorHalf { get; set; }
+        public int HalfImageIndex { get; set; }
+        public string InferiorTxt { get; set; }
         public bool HighLowBytesRevert { get; set; } = false;
         public int LongTimeoutForElapsed { get; set; } = 60 * 1000;
+
+        public bool IsCmdRun { get; set; } = true;
     }
 }

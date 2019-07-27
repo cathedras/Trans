@@ -52,5 +52,15 @@ namespace TspUtil
 
             return lst;
         }
+
+        public bool Connected()
+        {
+            return true;
+        }
+
+        public bool Disconnect()
+        {
+            return false;
+        }
     }
 }

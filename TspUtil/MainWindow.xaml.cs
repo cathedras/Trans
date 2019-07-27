@@ -29,11 +29,13 @@ namespace TspUtil
     {
         public MainWindow()
         {
+
             InitializeComponent();
 
             CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
 
             this.Loaded += MainWindow_Loaded;
+            
         }
 
         protected override void OnClosed(EventArgs e)
@@ -75,7 +77,7 @@ namespace TspUtil
             get { return (ViewModel)GetValue(VmProperty); }
             set { SetValue(VmProperty, value); }
         }
-
+        
         // Using a DependencyProperty as the backing store for Vm.  This enables animation, styling, binding, etc...
         public static readonly DependencyProperty VmProperty =
             DependencyProperty.Register("Vm", typeof(ViewModel), typeof(MainWindow), new PropertyMetadata(new ViewModel()));
