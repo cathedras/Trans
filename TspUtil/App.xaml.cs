@@ -23,10 +23,14 @@ namespace TspUtil
     /// </summary>
     public partial class App : Application
     {
+        public static ViewModelLocator Locator =>
+            (ViewModelLocator)Application.Current.FindResource("Locator");
+
         public App()
         {
             ExceptionHandler.AddHandler(false, false, false);
             NativeDllHelper.PreLoadNativeDlls();
+            Application.Current.Resources.Add("Locator", new ViewModelLocator());
         }
 
         private void Application_Startup(object sender, StartupEventArgs e)
@@ -101,7 +105,7 @@ namespace TspUtil
         {
             if (args.Any())
             {
-                var vm = new ViewModel();
+                var vm = new MianViewModel();
                 vm.AddLogMsg("启动命令：TspUtil,version:1.0.2");
                 vm.IsCmdRun = true;
                 // vm.TestExecute(); 

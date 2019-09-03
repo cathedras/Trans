@@ -1,0 +1,62 @@
+﻿<UserControl x:Class="TspUtil.TextEditorTemplate"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:TspUtil"
+             xmlns:avalonedit="http://icsharpcode.net/sharpdevelop/avalonedit"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+    <Control.Resources>
+        <ResourceDictionary Source="Resource.xaml"></ResourceDictionary>
+    </Control.Resources>
+    <Grid> 
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="26"></ColumnDefinition>
+            <ColumnDefinition Width="*"></ColumnDefinition>
+        </Grid.ColumnDefinitions>
+        
+                                                           
+        <ScrollViewer Name="BreakDown"
+                      VerticalScrollBarVisibility="Hidden"
+                      HorizontalScrollBarVisibility="Hidden" Margin="0,0,0,15">
+            <ListBox  
+                    Name ="BreakList"
+                    ScrollViewer.VerticalScrollBarVisibility="Disabled" 
+                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                    ItemsSource="{Binding TextModal.BreakPoints,Source={StaticResource Locator}}" 
+                    BorderBrush="Transparent" 
+                    VerticalAlignment="Center" Height="435"
+                    >
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type ListBox}">
+                            <Grid Background="{Binding IsRunning}">
+                                <CheckBox IsChecked="{Binding BreakDown}" Template="{StaticResource ButtonTemplate}"></CheckBox>
+                                <TextBlock Text="{Binding Id}" Height="{Binding ElementName=textEditor,Path=FontSize}" Visibility="Collapsed"></TextBlock>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </ScrollViewer>
+
+        <avalonedit:TextEditor Grid.Column="1" x:Name="textEditor" 
+                               ShowLineNumbers="True" 
+                               SyntaxHighlighting="Operation"
+                               TextChanged="TextEditor_OnTextChanged"
+                               FontSize="{Binding Main.FontSize, Mode=TwoWay,Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}">
+            <avalonedit:TextEditor.Options>
+                <avalonedit:TextEditorOptions ShowSpaces="False" ShowTabs="True" ShowBoxForControlCharacters="True" EnableRectangularSelection="True" />
+            </avalonedit:TextEditor.Options>
+            <avalonedit:TextEditor.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Command="Undo" />
+                    <MenuItem Command="Redo" />
+                    <Separator/>
+                    <MenuItem Command="Cut" />
+                    <MenuItem Command="Copy" />
+                    <MenuItem Command="Paste" />
+                </ContextMenu>
+            </avalonedit:TextEditor.ContextMenu>
+        </avalonedit:TextEditor>
+    </Grid>
+</UserControl>

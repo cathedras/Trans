@@ -17,6 +17,7 @@ namespace TspUtil
         string FnPath { set; get; }
         string Cs { set; get; }
         ImgOpState ImgOpState { set; get; }
+        int FileIndex { set; get; }
 
     }
     public class ImgItemUi  : INotifyPropertyChanged,ImgItemInfo
@@ -26,6 +27,7 @@ namespace TspUtil
         private string _fnPath;
         private string _cs;
         private ImgOpState _imgOpState;
+        private int _fileIndex=-1;
 
         
         public ImgOpState ImgOpState
@@ -35,8 +37,20 @@ namespace TspUtil
             {
                 if (value == _imgOpState) return;
                 _imgOpState = value;
-                OnPropertyChanged();
+                RaisePropertyChanged();
             }
+        }
+
+        public int FileIndex
+        {
+            get => _fileIndex;
+            set
+            {
+                if (value== _fileIndex) return;
+                _fileIndex = value;
+                RaisePropertyChanged();
+            }
+
         }
 
 
@@ -47,7 +61,7 @@ namespace TspUtil
             {
                 if (value == _isActived) return;
                 _isActived = value;
-                OnPropertyChanged();
+                RaisePropertyChanged();
             }
         }
 
@@ -58,7 +72,7 @@ namespace TspUtil
             {
                 if (value == _des) return;
                 _des = value;
-                OnPropertyChanged();
+                RaisePropertyChanged();
             }
         }
 
@@ -69,7 +83,7 @@ namespace TspUtil
             {
                 if (value == _fnPath) return;
                 _fnPath = value;
-                OnPropertyChanged();
+                RaisePropertyChanged();
             }
         }
 
@@ -80,7 +94,7 @@ namespace TspUtil
             {
                 if (value == _cs) return;
                 _cs = value;
-                OnPropertyChanged();
+                RaisePropertyChanged();
             }
         }
 
@@ -96,7 +110,7 @@ namespace TspUtil
         public event PropertyChangedEventHandler PropertyChanged;
 
         [NotifyPropertyChangedInvocator]
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        protected virtual void RaisePropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
@@ -108,6 +122,7 @@ namespace TspUtil
         private string _fnPath;
         private string _cs;
         private ImgOpState _imgOpState;
+        private int _fileIndex;
 
 
         public ImgOpState ImgOpState
@@ -118,6 +133,17 @@ namespace TspUtil
                 if (value == _imgOpState) return;
                 _imgOpState = value;
             }
+        }
+
+        public int FileIndex
+        {
+            get => _fileIndex;
+            set
+            {
+                if (value == _fileIndex) return;
+                _fileIndex = value;
+            }
+
         }
 
 
@@ -166,6 +192,44 @@ namespace TspUtil
             return IsActived + "," + Des + "," + FnPath + "," + Cs;
         }
     }
+    public class FileItem : ImgItemInfo,INotifyPropertyChanged
+    {
+        private string _des;
+        private string _fnPath;
+        public bool IsActived { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public string Des
+        {
+            get => _des;
+            set
+            {
+                if (value == _des) return;
+                _des = value;
+                RaisePropertyChanged();
+            }
+        }
+        public string FnPath
+        {
+            get => _fnPath;
+            set
+            {
+                if (value == _fnPath) return;
+                _fnPath = value;
+                RaisePropertyChanged();
+            }
+        }
+        public string Cs { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public ImgOpState ImgOpState { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public int FileIndex { get; set; }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        [NotifyPropertyChangedInvocator]
+        protected virtual void RaisePropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+
+
     public enum ImgOpState
     {
         None,

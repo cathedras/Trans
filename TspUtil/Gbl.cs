@@ -42,12 +42,24 @@ namespace TspUtil
             UsingNoBoundLst = false;
             IsCrossData = false;
             IsInferiorData = false;
+            IsPicReArrange = false;
             //Todo
             FileListXml = "FileInfoItem.xml";
             InfriorHalf = 900;
             HalfImageIndex = 912;
             InferiorTxt = "ff";
+            IsChooseDisplay = true;
+            IsNetWorkProgm = false;
+            FontSize = 20;
+            ProgmWorkDir = "../workDirectory";
+            IsAllComp = false;
+            WantToExeCount = 1;
+            
         }
+
+       
+
+        public bool IsPicReArrange { get; set; }
 
         [SectionName("PIC")] public int ClientWidth { get; set; }
         [SectionName("PIC")] public int ClientHeight { get; set; }
@@ -73,6 +85,7 @@ namespace TspUtil
         public string BinFileName { get; set; }
         public bool IsSerialSend { get; set; }
         public bool IsNetWorkSend { get; set; }
+        public bool IsNetWorkProgm { get; set; }
         public bool IsEthSim { get; set; }
         public int SimFrameLen { get; set; } = 1024;
         public int FrameLen { get; set; } = 1024;
@@ -92,9 +105,41 @@ namespace TspUtil
         public int InfriorHalf { get; set; }
         public int HalfImageIndex { get; set; }
         public string InferiorTxt { get; set; }
+        public bool IsChooseDisplay { get; set; }
+       
         public bool HighLowBytesRevert { get; set; } = false;
         public int LongTimeoutForElapsed { get; set; } = 60 * 1000;
 
         public bool IsCmdRun { get; set; } = true;
+
+        [SectionName("PROGRAMME")] public int FontSize { get; set; }
+        [SectionName("PROGRAMME")] public string ProgmWorkDir { get; set; }
+        [SectionName("PROGRAMME")] public string Iovcc { get; set; }
+        [SectionName("PROGRAMME")] public string Vsp { get; set; }
+        [SectionName("PROGRAMME")] public string Resx { get; set; }
+        [SectionName("PROGRAMME")] public string Bright { get; set; }
+
+        [SectionName("PROGRAMME")] public string Pll { get; set; }
+
+        [SectionName("PROGRAMME")] public string Regb6 { get; set; }
+        [SectionName("PROGRAMME")] public string Regd6 { get; set; }
+        [SectionName("PROGRAMME")] public string Regde { get; set; }
+
+        [SectionName("PROGRAMME")] public string Panelb6 { get; set; }
+
+        [SectionName("PROGRAMME")] public string Vsa { get; set; }
+        [SectionName("PROGRAMME")] public string Has { get; set; }
+        [SectionName("PROGRAMME")] public string Vfp { get; set; }
+        [SectionName("PROGRAMME")] public string Hfp { get; set; }
+        [SectionName("PROGRAMME")] public string Vbp { get; set; }
+        [SectionName("PROGRAMME")] public string Hbp { get; set; }
+        [SectionName("PROGRAMME")] public string Hact { get; set; }
+        [SectionName("PROGRAMME")] public string Vact { get; set; }
+        [SectionName("PROGRAMME")] public bool IsAllComp { get; set; }
+        [SectionName("PROGRAMME")] public int WantToExeCount { get; set; }
+
+
+
+
     }
 }

@@ -2,9 +2,10 @@
 <SyntaxDefinition name="OperationOnDeveice" extensions=".operat" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
 	<!-- The named colors 'Comment' and 'String' are used in SharpDevelop to detect if a line is inside a multiline string/comment -->
 	<Color name="Comment" foreground="Green" exampleText="// comment" />
-	<Color name="ValueTypeKeywords" fontWeight="bold" foreground="Red" exampleText="bool b = true;" />
-	<Color name="NumberLiteral" foreground="DarkBlue" exampleText="3.1415f"/>
-	<Color name="Keywords" fontWeight="bold" foreground="Blue" exampleText="if (a) {} else {}"/>	
+	<Color name="ValueTypeKeywords" fontWeight="bold" foreground="Blue" exampleText="bool b = true;" />
+	<Color name="NumberLiteral" foreground="Orange" exampleText="3.1415f"/>
+	<Color name="FinishOne" fontWeight="bold" foreground="Blue" exampleText=";"/>
+  <Color name="String" foreground="Red" exampleText="string text = &quot;Hello, World!&quot;"/>
 	<RuleSet name="CommentMarkerSet">
 		<Keywords fontWeight="bold" foreground="Red">
 			<Word>TODO</Word>
@@ -19,17 +20,22 @@
 	<!-- This is the main ruleset. -->
 	<RuleSet>
 		<Span color="Comment" ruleSet="CommentMarkerSet">
-			<Begin>//</Begin>
+			<Begin>//|;</Begin>
 		</Span>
-		<Span color="Comment" ruleSet="CommentMarkerSet">
-			<Begin>\#</Begin>
-		</Span>
-		
-		<Span color="Comment" ruleSet="CommentMarkerSet" multiline="true">
-			<Begin>/\*</Begin>
-			<End>\*/</End>
-		</Span>
-		
+    <Span color="FinishOne" ruleSet="CommentMarkerSet">
+      <Begin>;</Begin>
+      <End>;</End>
+	</Span>
+    
+    <Span color="String">
+      <Begin>"</Begin>
+      <End>"</End>
+      <RuleSet>
+        <!-- span for escape sequences -->
+        <Span begin="\\" end="."/>
+      </RuleSet>
+    </Span>
+    
 		<!-- don't highlight "@int" as keyword -->
 		<Rule>
 			@[\w\d_]+
@@ -38,6 +44,38 @@
 		<Keywords color="ValueTypeKeywords">
 			<Word>mipi</Word>
 			<Word>write</Word>
+			<Word>gpio</Word>
+			<Word>power</Word>
+			<Word>off</Word>
+			<Word>on</Word>
+			<Word>delay</Word>
+			<Word>level</Word>
+			<Word>dir</Word>
+			<Word>video</Word>
+			<Word>dsi</Word>
+			<Word>mode</Word>
+			<Word>host</Word>
+			<Word>lane</Word>
+			<Word>image</Word>
+			<Word>display</Word>
+			<Word>current</Word>
+			<Word>print</Word>
+			<Word>pwm</Word>
+			<Word>iic</Word>
+			<Word>fpga</Word>
+			<Word>driver</Word>
+			<Word>reset</Word>
+			<Word>timing</Word>
+			<Word>pll</Word>
+			<Word>register</Word>
+			<Word>order</Word>
+			<Word>ms</Word>
+			<Word>s</Word>
+			<Word>us</Word>
+			<Word>interface</Word>
+			<Word>show</Word>
+			<Word>color</Word>
+			<Word>memory</Word>
 		</Keywords>
 		
 		
@@ -52,3 +90,4 @@
 		</Rule>
 	</RuleSet>
 </SyntaxDefinition>
+

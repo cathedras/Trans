@@ -39,6 +39,7 @@ namespace TspUtil
         private string _binFileName = string.Empty;
         private bool _isCross = true;
         private bool _isInferior = false;
+        private bool _isPicReArrag =false;
         public int ImgWidth => _img.Width;
 
         public int ImgHeight => _img.Height;
@@ -62,6 +63,12 @@ namespace TspUtil
         public bool IsCross { get => _isCross; set => _isCross = value; }
         public bool IsInferior { get => _isInferior; set => _isInferior = value; }
 
+        public bool IsPicReArrag
+        {
+            get { return _isPicReArrag; }
+            set { _isPicReArrag = value; }
+        }
+
         Stopwatch st = new Stopwatch();
         public DataBmpAlg(Gbl gbl, byte[] by, MaskForArgbItem oddmask, MaskForArgbItem evenmask, PadLoc padLoc)
         {
@@ -78,6 +85,7 @@ namespace TspUtil
             _usingNoBanLst = _gbl.UsingNoBoundLst;
             _isCross = _gbl.IsCrossData;
             _isInferior = _gbl.IsInferiorData;
+            _isPicReArrag = _gbl.IsPicReArrange;
             using (var ms = new MemoryStream(by, false))
             {
                 
@@ -87,7 +95,17 @@ namespace TspUtil
                     _img = new Bitmap(ms);
                     _srcData = DecodeData();
                     _exdata = DataExtract(_srcData);
-                    FinalData.AddRange(DataPackaging());
+                    List<byte> pac = null;
+                    pac = DataPackaging();
+                    if (IsPicReArrag)
+                    {
+                        pac = ReArrangePic(pac);
+                    }
+
+                    if (pac!=null)
+                    {
+                        FinalData.AddRange(pac);
+                    }
                 }
                 else if (_gbl.IsSerialSend)
                 {
@@ -173,7 +191,7 @@ namespace TspUtil
             return buffer;
         }
         /// <summary>
-        /// 构造模拟数据,对期望的图片宽度和高度进行遍历，然后加入已经解析出来的图片,空白处加入用户输入的数据
+        /// 同时也可以构造模拟数据,实际使用时对期望的图片宽度和高度进行遍历，然后加入已经解析出来的图片,空白处加入用户输入的数据
         /// </summary>
         public List<byte> DataPackaging()
         {
@@ -194,6 +212,7 @@ namespace TspUtil
                         {
                             item.AddRange(_exdata[row + OddOffset].Take(exp));//添加一行
                         }
+                        //填充数据
                         for (int col = 0; col < _gbl.ExpByteWidth - _exdata[row + OddOffset].Count; col++)
                         {
                             item.Add(hex[col % hex.Length]);
@@ -204,6 +223,7 @@ namespace TspUtil
                         {
                             item.AddRange(_exdata[row + 1 + EvenOffset].Take(exp));
                         }
+                        //填充数据
                         for (int col = 0; col < _gbl.ExpByteWidth - _exdata[row + 1 + EvenOffset].Count; col++)
                         {
                             item.Add(hex[col % hex.Length]);
@@ -231,6 +251,7 @@ namespace TspUtil
                         data[row + 1, i - item.Count / 2] = item[i];
                     }
                 }
+                //添加到输出数据
                 for (int row = 0; row < _gbl.ExpByteHeight; row++)
                 {
                     for (int col = 0; col < _gbl.ExpByteWidth; col++)
@@ -254,7 +275,7 @@ namespace TspUtil
                         {
                             item.AddRange(oddRow);
                         }
-                        else if (OddOffset == 0 && EvenOffset < 0)//印象中是为了兼容c408的数据
+                        else if (OddOffset == 0 && EvenOffset < 0)//印象中是为了兼容c408的数据,以0 0code的方式做选择同时做奇偶行交换
                         {
                             for (int widIdx = 0; widIdx < _gbl.ExpByteWidth - 4; widIdx += _newCap)
                             {
@@ -338,6 +359,55 @@ namespace TspUtil
             }
 
             return packageData;
+        }
+
+        public List<byte> ReArrangePic(List<byte> source)
+        {
+            var hex = HexStringToByteArray(_gbl.PadStr);
+            var outputLst = new List<byte>();
+            var tmplst1 = new List<byte>();
+            var tmplst2 = new List<byte>();
+            var tmplst3 = new List<byte>();
+            var tmplst4 = new List<byte>();
+            var curWidth = ImgWidth / 4;
+            var picIdx1 = curWidth * _bpp;
+            var picIdx2 = curWidth * 2 * _bpp;
+            var picIdx3 = curWidth * 3 * _bpp;
+            var getPicLen = curWidth * _bpp;
+            for (var i = 0; i < _gbl.ExpByteHeight; i++)
+            {
+                var firstByteIndex = i * _gbl.ExpByteWidth;
+                var li = new byte[_gbl.ExpByteWidth];
+                Array.Copy(source.ToArray(), firstByteIndex, li, 0, _gbl.ExpByteWidth);
+                var tmp1 = new byte[getPicLen];
+                var tmp2 = new byte[getPicLen];
+                var tmp3 = new byte[getPicLen];
+                var tmp4 = new byte[getPicLen];
+                Array.Copy(li, 0, tmp1, 0, getPicLen);
+                Array.Copy(li, picIdx1, tmp2, 0, getPicLen);
+                Array.Copy(li, picIdx2, tmp3, 0, getPicLen);
+                Array.Copy(li, picIdx3, tmp4, 0, getPicLen);
+                tmplst1.AddRange(tmp1);
+                tmplst2.AddRange(tmp2);
+                tmplst3.AddRange(tmp3);
+                tmplst4.AddRange(tmp4);
+            }
+
+            outputLst.AddRange(tmplst1);
+            outputLst.AddRange(tmplst2);
+            outputLst.AddRange(tmplst3);
+            outputLst.AddRange(tmplst4);
+
+            if (_gbl.ExpByteWidth * _gbl.ExpByteHeight > outputLst.Count)
+            {
+                var len = _gbl.ExpByteWidth * _gbl.ExpByteHeight - outputLst.Count;
+                for (var i = 0; i < len; i++)
+                {
+                    outputLst.AddRange(hex);
+                }
+            }
+
+            return outputLst;
         }
 
         /// <summary>

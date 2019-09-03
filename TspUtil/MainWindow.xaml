@@ -10,10 +10,14 @@
         xmlns:lvcctrl="clr-namespace:Itenso.Windows.Controls.ListViewLayout;assembly=AgLib"
         xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
         xmlns:util="clr-namespace:ElCommon.Util;assembly=Util"
+        xmlns:avalonDock ="http://schemas.xceed.com/wpf/xaml/avalondock"
+        xmlns:avalonedit="http://icsharpcode.net/sharpdevelop/avalonedit"
+        xmlns:viewModel="clr-namespace:TspUtil.ViewModel"
         mc:Ignorable="d" Margin="4" Background="{Binding ElementName=mainGrid, Path=Background}"
-        Title="TSP MYZY调试助手" d:DesignHeight="674.667" d:DesignWidth="977.334">
-    <!--Visibility="{Binding Vm.ShowOrHide, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"-->
-
+        Title="MYZY调试助手" d:DesignHeight="674.667" d:DesignWidth="977.334">
+    <Window.CommandBindings>
+        <CommandBinding Command="local:MainWindow.ValidateCommand" Executed="Validate"/>
+    </Window.CommandBindings>
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -35,10 +39,12 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Menu Grid.Row="0" HorizontalAlignment="Right" Margin="0,2,2,2" Background="{StaticResource CtlBkBrush}" Width="76">
+        <Menu Grid.Row="0" HorizontalAlignment="Right" Margin="0,2,2,2" Background="{StaticResource CtlBkBrush}" Width="80">
             <MenuItem Header="操作">
-                <MenuItem Header="服务器监视" IsCheckable="True" IsChecked="{Binding Path=Vm.IsClientConnected, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"/>
+                <MenuItem Header="服务器监视" IsCheckable="True" IsChecked="{Binding Path=Main.IsClientConnected, Source={StaticResource Locator}}"/>
+                <MenuItem Header="客户端连接" Command="{Binding Main.ServerConnect, Source={StaticResource Locator}}"></MenuItem>
             </MenuItem>
+
             <MenuItem Header="关于"></MenuItem>
         </Menu>
 
@@ -52,32 +58,59 @@
 
             <StatusBarItem>
                 <WrapPanel>
-                    <TextBlock Text="{Binding Vm.Port, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"></TextBlock>
+                    <TextBlock Text="{Binding Main.Port, Source={StaticResource Locator}}"></TextBlock>
                 </WrapPanel>
             </StatusBarItem>
 
             <StatusBarItem HorizontalAlignment="Center">
                 <WrapPanel>
                     <TextBlock Text="设备状态："></TextBlock>
-
                     <TextBlock Text="客户端："></TextBlock>
-                    <TextBlock Text="{Binding Vm.IsClientConnected, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"></TextBlock>
+                    <Ellipse Width="15" Height="15">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Setter Property="Fill" Value="Green"/>
+                                <Style.Triggers>
+                                    <DataTrigger Value="false" Binding="{Binding Main.IsClientConnected, Source={StaticResource Locator}}">
+                                        <Setter Property="Fill" Value="Red"></Setter>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+                    <!--<TextBlock Text="{Binding Vm.IsClientConnected, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"></TextBlock>-->
+                    <TextBlock Text="  "></TextBlock>
                     <TextBlock Text="服务器："></TextBlock>
-                    <TextBlock Text="{Binding Vm.IsServerConnected, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"></TextBlock>
+                    <Ellipse Width="15" Height="15">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Setter Property="Fill" Value="Green"/>
+                                <Style.Triggers>
+                                    <DataTrigger Value="false" Binding="{Binding Main.IsServerConnected, Source={StaticResource Locator}}">
+                                        <Setter Property="Fill" Value="Red"></Setter>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+                    <!--<TextBlock  Text="{Binding Vm.IsServerConnected, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"></TextBlock>-->
                 </WrapPanel>
             </StatusBarItem>
 
             <StatusBarItem HorizontalAlignment="Right">
                 <WrapPanel>
                     <TextBlock Text="发送状态：" VerticalAlignment="Center"></TextBlock>
-                    <ProgressBar Maximum="{Binding Vm.Maximum, Mode=OneTime, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" Value="{Binding Vm.ProgressData,RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"   HorizontalAlignment="Left" Height="10" Grid.Row="2" VerticalAlignment="Center" Width="150"/>
+                    <ProgressBar Maximum="{Binding Main.Maximum, Mode=OneTime, Source={StaticResource Locator}}" Value="{Binding Main.ProgressData, Source={StaticResource Locator}}"   HorizontalAlignment="Left" Height="10" Grid.Row="2" VerticalAlignment="Center" Width="150"/>
                 </WrapPanel>
             </StatusBarItem>
             <StatusBar>
-                <TextBlock Text="{Binding Vm.ProgressData, Mode=OneWay, RelativeSource ={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" Width="24"></TextBlock> %
+                <TextBlock Text="{Binding Main.ProgressData, Mode=OneWay, Source={StaticResource Locator}}" Width="24"></TextBlock> %
             </StatusBar>
+            <StatusBarItem>
+                <TextBlock Text="{Binding Main.CurProgmFile, Mode=OneWay, Source={StaticResource Locator}}" Width="auto"></TextBlock>
+            </StatusBarItem>
             <StatusBarItem HorizontalAlignment="Right">
-                <TextBlock Text="{Binding Vm.SwVersion, Mode=OneWay, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, StringFormat={}VER : {0:}}" MinWidth="80"></TextBlock>
+                <TextBlock Text="{Binding Main.SwVersion, Mode=OneWay, Source={StaticResource Locator}, StringFormat={}VER : {0:}}" MinWidth="80"></TextBlock>
             </StatusBarItem>
         </StatusBar>
 
@@ -97,27 +130,38 @@
 
                         <GridSplitter Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" VerticalAlignment="Stretch"  HorizontalAlignment="Right"  Width="2"></GridSplitter>
                         <GridSplitter Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" VerticalAlignment="Top" HorizontalAlignment="Stretch" Height="2"></GridSplitter>
-                        <agCustom:LogItemViewEx Margin="0,2" Grid.Row="1" Grid.ColumnSpan="2" Grid.Column="0" AutoScrollLevel="1" MsgLogItems="{Binding Vm.LogItems, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"/>
+                        <ScrollViewer  Name="LogScrollPic" SizeChanged="FrameLog_OnSizeChange">
+
+                        </ScrollViewer>
+                        <agCustom:LogItemViewEx AutoScrollItems="True" AutoScrollLevel="10000" Grid.Row="1" Grid.ColumnSpan="2" Grid.Column="0" Margin="0,2" BorderBrush="Black" MsgLogItems="{Binding Vm.LogItems, Source={StaticResource Locator}}"/>
+
+                        <!--<agCustom:LogItemViewEx Margin="0,2" AutoScrollLevel="1" MsgLogItems="{Binding Vm.LogItems, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"/>-->
 
                         <Grid Grid.Row="0" Grid.Column="0" Margin="2"
-                              IsEnabled="{Binding Vm.PanelUnLock,RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">
+                              IsEnabled="{Binding Main.PanelUnLock, Source={StaticResource Locator}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="91*"/>
+                                <ColumnDefinition Width="355*"/>
+                            </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="*"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="60"></RowDefinition>
                             </Grid.RowDefinitions>
 
-                            <ListView Margin="2,2,0,1.5" HorizontalContentAlignment="Stretch" 
+                            <ListView Margin="2,2,0,2" HorizontalContentAlignment="Stretch" 
                                   lvcctrl:ListViewLayoutManager.Enabled="True" Name="imgItemCtls"
                                   Background="{StaticResource CtlBkBrush}" 
-                                  ItemsSource="{Binding Vm.ImgItemInfos, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}"
+                                  ItemsSource="{Binding Main.ImgItemInfos, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}"
                                   Grid.ColumnSpan="2"
                                   AllowDrop="True"
-                                  
                                   SelectionMode="Extended">
                                 <i:Interaction.Triggers>
                                     <i:EventTrigger EventName="SelectionChanged">
-                                        <util:ExInvokeCommandAction Command="{Binding Vm.ImgItemSelectionChangedCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" CommandParameter="{Binding ElementName=imgItemCtls, Path=SelectedItem}"></util:ExInvokeCommandAction>
+                                        <util:ExInvokeCommandAction Command="{Binding Main.ImgItemSelectionChangedCmd, Source={StaticResource Locator}}" CommandParameter="{Binding ElementName=imgItemCtls, Path=SelectedItem}"></util:ExInvokeCommandAction>
+                                    </i:EventTrigger>
+                                    <i:EventTrigger EventName="MouseDoubleClick">
+                                        <util:ExInvokeCommandAction Command="{Binding Main.ImgItemSelectionChangedCmd, Source={StaticResource Locator}}" CommandParameter="{Binding ElementName=imgItemCtls, Path=SelectedItem}"></util:ExInvokeCommandAction>
                                     </i:EventTrigger>
                                 </i:Interaction.Triggers>
                                 <ListView.View>
@@ -189,22 +233,24 @@
                                 </ListView.View>
                             </ListView>
 
-                            <UniformGrid Grid.Row="1" Rows="1" Margin="5,4.5" Background="{StaticResource CtlBkBrush}" Grid.ColumnSpan="2">
+                            <UniformGrid Grid.Row="1" Rows="2" Margin="5,4,5,5" Background="{StaticResource CtlBkBrush}" Grid.ColumnSpan="2">
                                 <UniformGrid.Resources>
                                     <Style TargetType="Button">
                                         <Setter Property="Width" Value="50"></Setter>
                                     </Style>
                                 </UniformGrid.Resources>
-                                <Button Margin="3" Command="{Binding Vm.OpenFdClearCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">清空</Button>
-                                <Button Margin="3" Command="{Binding Vm.OpenFdCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">打开</Button>
-                                <Button Margin="3" Command="{Binding Vm.SendItemsCmd, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">发送</Button>
-                                <Button Margin="3" Command="{Binding Vm.ItemsMoveUp, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">上移</Button>
-                                <Button Margin="3" Command="{Binding Vm.ItemsMoveDown, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">下移</Button>
-                                <Button Margin="3" Command="{Binding Vm.ServerConnect, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">连接</Button>
+                                <Button Margin="3" Command="{Binding Main.OpenFdClearCmd, Source={StaticResource Locator}}">清空</Button>
+                                <Button Margin="3" Command="{Binding Main.OpenFdCmd, Source={StaticResource Locator}}">打开</Button>
+                                <Button Margin="3" Command="{Binding Main.SendItemsCmd, Source={StaticResource Locator}}">NET</Button>
+                                <Button Margin="3" Command="{Binding Main.SendToDDR, Source={StaticResource Locator}}">DDR</Button>
+                                <Button Margin="3" Command="{Binding Main.ItemsMoveUp, Source={StaticResource Locator}}">上移</Button>
+                                <Button Margin="3" Command="{Binding Main.ItemsMoveDown, Source={StaticResource Locator}}">下移</Button>
+                                <Button Margin="3" Command="{Binding Main.PowerOnDevice, Source={StaticResource Locator}}">开电</Button>
+                                <Button Margin="3" Command="{Binding Main.PowerOffDevice, Source={StaticResource Locator}}">关电</Button>
                             </UniformGrid>
-                            <UniformGrid Grid.Row="1" Grid.ColumnSpan="2"  Margin="0,28.5,0,0.5" Grid.RowSpan="2">
+                            <UniformGrid Grid.Row="1" Grid.ColumnSpan="2" Grid.Column="0" Margin="0,28,0,1" Grid.RowSpan="2">
                                 <ListBox Background="{StaticResource CtlBkBrush}" 
-                                         ItemsSource="{Binding Vm.ViewClients, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"
+                                         ItemsSource="{Binding Main.ViewClients, Source={StaticResource Locator}}"
                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                          Name="Item" Margin="0,29,0,0">
 
@@ -251,7 +297,7 @@
                                 <RowDefinition Height="Auto" MinHeight="30"/>
                                 <RowDefinition/>
                             </Grid.RowDefinitions>
-                            <TextBlock Text="{Binding Vm.ActiveFn, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" FontSize="16" Margin="5" FontStyle="Italic" Foreground="DeepSkyBlue">
+                            <TextBlock Text="{Binding Main.ActiveFn, Source={StaticResource Locator}}" FontSize="16" Margin="5" FontStyle="Italic" Foreground="DeepSkyBlue">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Visibility" Value="Visible"/>
@@ -265,7 +311,7 @@
                             </TextBlock>
 
                             <Grid Grid.Row="1" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
-                                <Image Source="{Binding Vm.ImgSource, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"
+                                <Image Source="{Binding Main.ImgSource, Source={StaticResource Locator}}"
                                    Stretch="Uniform"></Image>
                             </Grid>
                         </Grid>
@@ -310,9 +356,9 @@
                         <StackPanel Grid.Row="0" Grid.Column="0">
                             <GroupBox>
                                 <GroupBox.Header>
-                                    <CheckBox IsChecked="{Binding Vm.IsNetWorkSend, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">网络发送</CheckBox>
+                                    <CheckBox IsChecked="{Binding Main.IsNetWorkSend, Source={StaticResource Locator}}">通过TCP网络发送</CheckBox>
                                 </GroupBox.Header>
-                                <StackPanel IsEnabled="{Binding Vm.IsNetWorkSend, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">
+                                <StackPanel IsEnabled="{Binding Main.IsNetWorkSend, Source={StaticResource Locator}}">
                                     <Expander Header="预期分辨率" IsExpanded="True">
                                         <Grid>
                                             <Grid.RowDefinitions>
@@ -325,8 +371,8 @@
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Grid.Column="0" Grid.Row="0" Text="X: "></TextBlock>
                                             <TextBlock Grid.Column="0" Grid.Row="1" Text="Y: "></TextBlock>
-                                            <xctk:IntegerUpDown Grid.Column="1" Grid.Row="0" Minimum="0" Value="{Binding Vm.ExpPixWidth, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}"></xctk:IntegerUpDown>
-                                            <xctk:IntegerUpDown Grid.Column="1" Grid.Row="1" Minimum="0"  Value="{Binding Vm.ExpPixHeight, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}"></xctk:IntegerUpDown>
+                                            <xctk:IntegerUpDown Grid.Column="1" Grid.Row="0" Minimum="0" Value="{Binding Main.ExpPixWidth, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}"></xctk:IntegerUpDown>
+                                            <xctk:IntegerUpDown Grid.Column="1" Grid.Row="1" Minimum="0"  Value="{Binding Main.ExpPixHeight, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}"></xctk:IntegerUpDown>
                                         </Grid>
                                     </Expander>
                                     <Expander Header="字节序" IsExpanded="True">
@@ -380,10 +426,10 @@
                                             <TextBlock Grid.Column="0" Grid.Row="1" Text="偶行: "></TextBlock>
 
 
-                                            <TextBox Grid.Column="1" Grid.Row="0" Width="100" VerticalAlignment="Center" Text="{Binding Vm.OddOffset, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0:D1}}"></TextBox>
-                                            <ItemsControl Grid.Column="2" Grid.Row="0" VerticalAlignment="Center" ItemsSource="{Binding Vm.OddMaskArgb, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}"></ItemsControl>
-                                            <TextBox Grid.Column="1" Grid.Row="1" Width="100" VerticalAlignment="Center" Text="{Binding Vm.EvenOffset, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0:D1}}"></TextBox>
-                                            <ItemsControl Grid.Column="2" Grid.Row="1" VerticalAlignment="Center" ItemsSource="{Binding Vm.EvenMaskArgb, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}"></ItemsControl>
+                                            <TextBox Grid.Column="1" Grid.Row="0" Width="100" VerticalAlignment="Center" Text="{Binding Main.OddOffset, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0:D1}}"></TextBox>
+                                            <ItemsControl Grid.Column="2" Grid.Row="0" VerticalAlignment="Center" ItemsSource="{Binding Main.OddMaskArgb, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}"></ItemsControl>
+                                            <TextBox Grid.Column="1" Grid.Row="1" Width="100" VerticalAlignment="Center" Text="{Binding Main.EvenOffset, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0:D1}}"></TextBox>
+                                            <ItemsControl Grid.Column="2" Grid.Row="1" VerticalAlignment="Center" ItemsSource="{Binding Main.EvenMaskArgb, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}"></ItemsControl>
 
                                         </Grid>
                                     </Expander>
@@ -400,11 +446,11 @@
                                             <TextBlock Grid.Column="0" Grid.Row="0" Text="位置"></TextBlock>
                                             <TextBlock Grid.Column="0" Grid.Row="1" Text="数据 "></TextBlock>
                                             <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Source={StaticResource PadLocModeProvider}}" 
-                                              SelectedValue="{Binding Vm.PadLoc, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"
+                                              SelectedValue="{Binding Main.PadLoc, Source={StaticResource Locator}}"
                                               SelectedValuePath="Val"
                                               DisplayMemberPath="Des">
                                             </ComboBox>
-                                            <xctk:WatermarkTextBox Grid.Column="1" Grid.Row="1" Watermark="FF" Text="{Binding Vm.PadStr, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}">
+                                            <xctk:WatermarkTextBox Grid.Column="1" Grid.Row="1" Watermark="FF" Text="{Binding Main.PadStr, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}">
                                                 <i:Interaction.Behaviors>
                                                     <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
                                                 </i:Interaction.Behaviors>
@@ -412,7 +458,7 @@
                                         </Grid>
                                     </Expander>
                                     <Expander Header="其他设置" IsExpanded="True">
-                                        <Grid>
+                                        <Grid Height="261">
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="30px"></RowDefinition>
                                                 <RowDefinition Height="30px"></RowDefinition>
@@ -422,31 +468,34 @@
                                                 <RowDefinition Height="30px"></RowDefinition>
                                                 <RowDefinition Height="30px"></RowDefinition>
                                                 <RowDefinition Height="30px"></RowDefinition>
+                                                <RowDefinition Height="30px"></RowDefinition>
                                             </Grid.RowDefinitions>
-                                            <CheckBox VerticalAlignment="Center" Grid.Row="0" IsChecked="{Binding Vm.IsInverse, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">上下翻转图片</CheckBox>
-                                            <CheckBox VerticalAlignment="Center" Grid.Row="1" IsChecked="{Binding Vm.HighLowBytesRevert, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">数据字节高低位反转</CheckBox>
-                                            <CheckBox VerticalAlignment="Center" Grid.Row="2"  IsChecked="{Binding Vm.IsAddSizeToHeader, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">头数据包含分辨信息</CheckBox>
-                                            <CheckBox VerticalAlignment="Center" Grid.Row="3" IsChecked="{Binding Vm.UsinSimData, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">使用模拟数据(必须选择一张图片获取分辨率)</CheckBox>
-                                            <CheckBox VerticalAlignment="Center" Grid.Row="4" IsChecked="{Binding Vm.UsingNoBoundLst, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">CheckSum不使用约束列表</CheckBox>
-                                            <CheckBox VerticalAlignment="Center" Grid.Row="5" IsChecked="{Binding Vm.IsCrossData, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">像素交叉</CheckBox>
-                                            <CheckBox VerticalAlignment="Center" Grid.Row="6" IsChecked="{Binding Vm.IsInferiorData, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" Content="图片校正"></CheckBox>
+                                            <CheckBox VerticalAlignment="Center" Grid.Row="0" IsChecked="{Binding Main.IsInverse, Source={StaticResource Locator}}">上下翻转图片</CheckBox>
+                                            <CheckBox VerticalAlignment="Center" Grid.Row="1" IsChecked="{Binding Main.HighLowBytesRevert, Source={StaticResource Locator}}">数据字节高低位反转</CheckBox>
+                                            <CheckBox VerticalAlignment="Center" Grid.Row="2"  IsChecked="{Binding Main.IsAddSizeToHeader, Source={StaticResource Locator}}">头数据包含分辨信息</CheckBox>
+                                            <CheckBox VerticalAlignment="Center" Grid.Row="3" IsChecked="{Binding Main.UsinSimData, Source={StaticResource Locator}}">使用模拟数据(必须选择一张图片获取分辨率)</CheckBox>
+                                            <CheckBox VerticalAlignment="Center" Grid.Row="4" IsChecked="{Binding Main.UsingNoBoundLst, Source={StaticResource Locator}}">CheckSum不使用约束列表</CheckBox>
+                                            <CheckBox VerticalAlignment="Center" Grid.Row="5" IsChecked="{Binding Main.IsCrossData, Source={StaticResource Locator}}">像素交叉</CheckBox>
+                                            <CheckBox VerticalAlignment="Center" Grid.Row="6" IsChecked="{Binding Main.IsInferiorData, Source={StaticResource Locator}}" Content="图片校正"></CheckBox>
                                             <TextBlock Grid.Row="6" Margin="102,7,132,7" Width="Auto" RenderTransformOrigin="0.5,0.5">填补数据：</TextBlock>
-                                            <xctk:WatermarkTextBox Grid.Row="6" Watermark="FF" Text="{Binding Vm.RegsTxt, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}" Margin="173,0,0,0">
+                                            <xctk:WatermarkTextBox Grid.Row="6" Watermark="FF" Text="{Binding Main.RegsTxt, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}" Margin="173,0,0,0">
                                                 <i:Interaction.Behaviors>
                                                     <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
                                                 </i:Interaction.Behaviors>
                                             </xctk:WatermarkTextBox>
+                                            <CheckBox VerticalAlignment="Center" Grid.Row="7" IsChecked="{Binding Main.IsChooseDisplay,RelativeSource={RelativeSource FindAncestor,AncestorType=local:MainWindow}}">同步图片显示</CheckBox>
+                                            <CheckBox VerticalAlignment="Center" Grid.Row="8" IsChecked="{Binding Main.IsPictureReArang,RelativeSource={RelativeSource FindAncestor,AncestorType=local:MainWindow}}">图片1/4排列</CheckBox>
                                         </Grid>
                                     </Expander>
                                 </StackPanel>
                             </GroupBox>
                         </StackPanel>
-                        <StackPanel Grid.Row="0" Grid.Column="1" HorizontalAlignment="Left">
+                        <StackPanel Grid.Row="0" Grid.Column="1" Visibility="Collapsed">
                             <GroupBox>
                                 <GroupBox.Header>
-                                    <CheckBox IsChecked="{Binding Vm.IsSerialSend,RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">串口发送</CheckBox>
+                                    <CheckBox IsChecked="{Binding Main.IsSerialSend,Source={StaticResource Locator}}">串口发送</CheckBox>
                                 </GroupBox.Header>
-                                <StackPanel IsEnabled="{Binding Vm.IsSerialSend,RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}">
+                                <StackPanel IsEnabled="{Binding Main.IsSerialSend,Source={StaticResource Locator}}">
                                     <Expander Header="串口设置" IsExpanded="True">
                                         <Grid>
                                             <Grid.RowDefinitions>
@@ -459,12 +508,12 @@
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Text="串口号：" Grid.Row="0" Grid.Column="0"></TextBlock>
                                             <TextBlock Text="波特率：" Grid.Row="1" Grid.Column="0"></TextBlock>
-                                            <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Vm.SerialComs, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" 
-                                              SelectedValue="{Binding Vm.SelectCom, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"
+                                            <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Main.SerialComs, Source={StaticResource Locator}}" 
+                                              SelectedValue="{Binding Main.SelectCom, Source={StaticResource Locator}}"
                                               SelectedValuePath="Val"
                                               DisplayMemberPath="Des"></ComboBox>
-                                            <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Vm.SerialSpeed, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}" 
-                                              SelectedValue="{Binding Vm.SelectSpeed, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}}"
+                                            <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Main.SerialSpeed, Source={StaticResource Locator}}" 
+                                              SelectedValue="{Binding Main.SelectSpeed, Source={StaticResource Locator}}"
                                               SelectedValuePath="Val"
                                               DisplayMemberPath="Des"></ComboBox>
                                         </Grid>
@@ -480,7 +529,7 @@
                                                 <ColumnDefinition Width="Auto"></ColumnDefinition>
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Grid.Row="0" Grid.Column="0" Text="数据："></TextBlock>
-                                            <xctk:WatermarkTextBox Grid.Row="0" Grid.Column="1" Watermark="FF" Text="{Binding Vm.PadStr, RelativeSource={RelativeSource FindAncestor, AncestorType=local:MainWindow}, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,-206,0">
+                                            <xctk:WatermarkTextBox Grid.Row="0" Grid.Column="1" Watermark="FF" Text="{Binding Main.PadStr, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,-206,0">
                                                 <i:Interaction.Behaviors>
                                                     <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
                                                 </i:Interaction.Behaviors>
@@ -491,9 +540,359 @@
                                 </StackPanel>
                             </GroupBox>
                         </StackPanel>
+                        <StackPanel Grid.Row="0" Grid.Column="2" HorizontalAlignment="Left">
+                            <GroupBox Height="auto" Width="305">
+                                <GroupBox.Header>
+                                    <CheckBox IsChecked="{Binding Main.IsNetWorkSend,Source={StaticResource Locator}}">网络编程</CheckBox>
+                                </GroupBox.Header>
+                                <StackPanel IsEnabled="{Binding Main.IsNetWorkSend,Source={StaticResource Locator}}">
+                                    <Expander Header="临时操作" IsExpanded="True" Height="auto">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"></RowDefinition>
+                                                <RowDefinition Height="Auto"></RowDefinition>
+                                                <RowDefinition Height="Auto"></RowDefinition>
+                                                <RowDefinition Height="Auto"></RowDefinition>
+                                                <RowDefinition Height="10"></RowDefinition>
+                                                <RowDefinition Height="Auto"></RowDefinition>
+                                                <RowDefinition Height="10"></RowDefinition>
+                                                <RowDefinition Height="Auto"></RowDefinition>
+                                                <RowDefinition Height="Auto"></RowDefinition>
+                                                <RowDefinition Height="Auto"></RowDefinition>
+                                                <RowDefinition Height="10"></RowDefinition>
+                                                <RowDefinition Height="Auto"></RowDefinition>
+                                                <RowDefinition Height="10"></RowDefinition>
+                                                <RowDefinition Height="Auto"></RowDefinition>
+                                                <RowDefinition Height="Auto"></RowDefinition>
+                                                <RowDefinition Height="Auto"></RowDefinition>
+                                                <RowDefinition Height="Auto"></RowDefinition>
+                                                <RowDefinition Height="Auto"></RowDefinition>
+                                                <RowDefinition Height="Auto"></RowDefinition>
+                                                <RowDefinition Height="Auto"></RowDefinition>
+                                                <RowDefinition Height="Auto"></RowDefinition>
+                                                <RowDefinition Height="Auto"></RowDefinition>
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                                                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                                                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Name="IOVCC" Text="IOVCC:" Margin="2,4,0,4" Width="Auto"></TextBlock>
+                                            <xctk:WatermarkTextBox Grid.Row="0" Watermark="20" Text="{Binding Main.IovccParam, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}" Margin="64,0,-83,0" Grid.ColumnSpan="3" HorizontalAlignment="Left" Width="161">
+                                                <i:Interaction.Behaviors>
+                                                    <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
+                                                </i:Interaction.Behaviors>
+                                            </xctk:WatermarkTextBox>
+                                            <Button Grid.Row="0" Command="{Binding Main.SendFromTextBox, Source={StaticResource Locator}}" CommandParameter="{Binding ElementName=IOVCC, Path=Text}" Grid.Column="2" Margin="84,0,-62,0" HorizontalAlignment="Left" Width="60" >send</Button>
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Name="VSP" Text="VSP/VSN:" Margin="2,4,0,4" Width="Auto"></TextBlock>
+                                            <xctk:WatermarkTextBox Grid.Row="1" Watermark="20" Text="{Binding Main.VspParam, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}" Margin="64,0,-77,0" Grid.ColumnSpan="3" TextChanged="WatermarkTextBox_TextChanged" HorizontalAlignment="Left" Width="161">
+                                                <i:Interaction.Behaviors>
+                                                    <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
+                                                </i:Interaction.Behaviors>
+                                            </xctk:WatermarkTextBox>
+                                            <Button Grid.Row="1"  Command="{Binding Main.SendFromTextBox, Source={StaticResource Locator}}" CommandParameter="{Binding ElementName=VSP, Path=Text}" Grid.Column="2" Margin="84,0,-48,0" HorizontalAlignment="Left" Width="59" >send</Button>
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Name="RESX" Text="RESX:" Margin="2,4,0,4" Width="Auto"></TextBlock>
+                                            <xctk:WatermarkTextBox Grid.Row="2" Watermark="20" Text="{Binding Main.ResxParam, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}" Margin="64,0,-71,0" Grid.ColumnSpan="3" HorizontalAlignment="Left" Width="161">
+                                                <i:Interaction.Behaviors>
+                                                    <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
+                                                </i:Interaction.Behaviors>
+                                            </xctk:WatermarkTextBox>
+                                            <Button Grid.Row="2"  Command="{Binding Main.SendFromTextBox, Source={StaticResource Locator}}" CommandParameter="{Binding ElementName=RESX, Path=Text}" Grid.Column="2" Margin="84,0,-58,0" HorizontalAlignment="Left" Width="60" >send</Button>
+                                            <TextBlock Grid.Row="3" Name="BRIGHT" Grid.Column="0" Text="BRIGHT:" Margin="2,4,0,4" Width="Auto"></TextBlock>
+                                            <xctk:WatermarkTextBox Grid.Row="3" Watermark="1-100%" Text="{Binding Main.BrightParam, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}" Margin="64,0,-65,0" Grid.ColumnSpan="3" HorizontalAlignment="Left" Width="161">
+                                                <i:Interaction.Behaviors>
+                                                    <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
+                                                </i:Interaction.Behaviors>
+                                            </xctk:WatermarkTextBox>
+                                            <Button Grid.Row="3"  Command="{Binding Main.SendFromTextBox, Source={StaticResource Locator}}" CommandParameter="{Binding ElementName=BRIGHT, Path=Text}" Grid.Column="2" Margin="84,0,-54,0" HorizontalAlignment="Left" Width="60" >send</Button>
+                                            <TextBlock Grid.Row="5" Name="PLL" Grid.Column="0" Text="PLL:" Margin="2,4,0,4" Width="24" HorizontalAlignment="Left"></TextBlock>
+                                            <xctk:WatermarkTextBox Grid.Row="5" Watermark="1070" Text="{Binding Main.PllParam, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}" Margin="64,0,-59,0" Grid.ColumnSpan="3" HorizontalAlignment="Left" Width="161">
+                                                <i:Interaction.Behaviors>
+                                                    <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
+                                                </i:Interaction.Behaviors>
+                                            </xctk:WatermarkTextBox>
+                                            <Button Grid.Row="5"  Command="{Binding Main.SendFromTextBox, Source={StaticResource Locator}}" CommandParameter="{Binding ElementName=PLL, Path=Text}" Grid.Column="2" Margin="84,0,-51,0" HorizontalAlignment="Left" Width="60" >send</Button>
+                                            <TextBlock Grid.Row="7" Grid.Column="0" Name="REGB6" Text="REG_B6:" Margin="2,4,0,4" Width="47" HorizontalAlignment="Left"></TextBlock>
+                                            <xctk:WatermarkTextBox Grid.Row="7" Watermark="0XF027" Text="{Binding Main.Regb6Param, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}" Margin="64,0,-50,0" Grid.ColumnSpan="3" HorizontalAlignment="Left" Width="161">
+                                                <i:Interaction.Behaviors>
+                                                    <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
+                                                </i:Interaction.Behaviors>
+                                            </xctk:WatermarkTextBox>
+                                            <Button Grid.Row="7"  Command="{Binding Main.SendFromTextBox, Source={StaticResource Locator}}" CommandParameter="{Binding ElementName=REGB6, Path=Text}" Grid.Column="2" Margin="84,0,-45,0" HorizontalAlignment="Left" Width="59" >send</Button>
+                                            <TextBlock Grid.Row="8" Grid.Column="0" Name="REGD6" Text="REG_D6:" Margin="2,4,0,4" Width="49" HorizontalAlignment="Left"></TextBlock>
+                                            <xctk:WatermarkTextBox Grid.Row="8" Watermark="0X01FD" Text="{Binding Main.Regd6Param, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}" Margin="64,0,-47,0" Grid.ColumnSpan="3" HorizontalAlignment="Left" Width="161">
+                                                <i:Interaction.Behaviors>
+                                                    <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
+                                                </i:Interaction.Behaviors>
+                                            </xctk:WatermarkTextBox>
+                                            <Button Grid.Row="8"  Command="{Binding Main.SendFromTextBox, Source={StaticResource Locator}}" CommandParameter="{Binding ElementName=REGD6, Path=Text}" Grid.Column="2" Margin="84,0,-42,0" HorizontalAlignment="Left" Width="59" >send</Button>
+                                            <TextBlock Grid.Row="9" Grid.Column="0" Name="REGDE" Text="REG_DE:" Margin="2,4,0,4" Width="49" HorizontalAlignment="Left"></TextBlock>
+                                            <xctk:WatermarkTextBox Grid.Row="9" Watermark="0X003A" Text="{Binding Main.RegdeParam, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}" Margin="64,0,-41,0" Grid.ColumnSpan="3" HorizontalAlignment="Left" Width="161">
+                                                <i:Interaction.Behaviors>
+                                                    <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
+                                                </i:Interaction.Behaviors>
+                                            </xctk:WatermarkTextBox>
+                                            <Button Grid.Row="9"  Command="{Binding Main.SendFromTextBox, Source={StaticResource Locator}}" CommandParameter="{Binding ElementName=REGDE, Path=Text}" Grid.Column="2" Margin="84,0,-39,0" HorizontalAlignment="Left" Width="59" >send</Button>
+                                            <TextBlock Grid.Row="11" Grid.Column="0" Name="PANELB6" Text="PANEL_B6:" Margin="2,4,0,4" Width="62" HorizontalAlignment="Left"></TextBlock>
+                                            <xctk:WatermarkTextBox Grid.Row="11" Watermark="0X0091" Text="{Binding Main.Panelb6Param, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}" Margin="64,0,-35,0" Grid.ColumnSpan="3" HorizontalAlignment="Left" Width="161">
+                                                <i:Interaction.Behaviors>
+                                                    <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
+                                                </i:Interaction.Behaviors>
+                                            </xctk:WatermarkTextBox>
+                                            <Button Grid.Row="11"  Command="{Binding Main.SendFromTextBox, Source={StaticResource Locator}}" CommandParameter="{Binding ElementName=PANELB6, Path=Text}" Grid.Column="2" Margin="84,0,-36,0" HorizontalAlignment="Left" Width="59" >send</Button>
+                                            <TextBlock Grid.Row="13" Grid.Column="0" Name="VSA" Text="VSA:" Margin="2,4,0,4" Width="62" HorizontalAlignment="Left"></TextBlock>
+                                            <xctk:WatermarkTextBox Grid.Row="13" Watermark="1" Text="{Binding Main.VsaParam, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}" Margin="64,0,-29,0" Grid.ColumnSpan="3" HorizontalAlignment="Left" Width="161">
+                                                <i:Interaction.Behaviors>
+                                                    <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
+                                                </i:Interaction.Behaviors>
+                                            </xctk:WatermarkTextBox>
+                                            <Button Grid.Row="13"  Command="{Binding Main.SendFromTextBox, Source={StaticResource Locator}}" CommandParameter="{Binding ElementName=VSA, Path=Text}" Grid.Column="2" Margin="84,0,-33,0" HorizontalAlignment="Left" Width="59" >send</Button>
+                                            <TextBlock Grid.Row="14" Grid.Column="0" Name="HAS" Text="HSA:" Margin="2,4,0,4" Width="62" HorizontalAlignment="Left"></TextBlock>
+                                            <xctk:WatermarkTextBox Grid.Row="14" Watermark="1" Text="{Binding Main.HasParam, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}" Margin="64,0,-23,0" Grid.ColumnSpan="3" HorizontalAlignment="Left" Width="161">
+                                                <i:Interaction.Behaviors>
+                                                    <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
+                                                </i:Interaction.Behaviors>
+                                            </xctk:WatermarkTextBox>
+                                            <Button Grid.Row="14"  Command="{Binding Main.SendFromTextBox, Source={StaticResource Locator}}" CommandParameter="{Binding ElementName=HAS, Path=Text}" Grid.Column="2" Margin="84,0,-30,0" HorizontalAlignment="Left" Width="59" >send</Button>
+                                            <TextBlock Grid.Row="15" Grid.Column="0" Name="VFP" Text="VFP:" Margin="2,4,0,4" Width="62" HorizontalAlignment="Left"></TextBlock>
+                                            <xctk:WatermarkTextBox Grid.Row="15" Watermark="286" Text="{Binding Main.VfpParam, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}" Margin="64,0,-17,0" Grid.ColumnSpan="3" HorizontalAlignment="Left" Width="161">
+                                                <i:Interaction.Behaviors>
+                                                    <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
+                                                </i:Interaction.Behaviors>
+                                            </xctk:WatermarkTextBox>
+                                            <Button Grid.Row="15"  Command="{Binding Main.SendFromTextBox, Source={StaticResource Locator}}" CommandParameter="{Binding ElementName=VFP, Path=Text}" Grid.Column="2" Margin="84,0,-27,0" HorizontalAlignment="Left" Width="59" >send</Button>
+                                            <TextBlock Grid.Row="16" Grid.Column="0" Name="HFP" Text="HFP:" Margin="2,4,0,4" Width="62" HorizontalAlignment="Left"></TextBlock>
+                                            <xctk:WatermarkTextBox Grid.Row="16" Watermark="30" Text="{Binding Main.HfpParam, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}" Margin="64,0,-11,0" Grid.ColumnSpan="3" HorizontalAlignment="Left" Width="161">
+                                                <i:Interaction.Behaviors>
+                                                    <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
+                                                </i:Interaction.Behaviors>
+                                            </xctk:WatermarkTextBox>
+                                            <Button Grid.Row="16"  Command="{Binding Main.SendFromTextBox, Source={StaticResource Locator}}" CommandParameter="{Binding ElementName=HFP, Path=Text}" Grid.Column="2" Margin="84,0,-24,0" HorizontalAlignment="Left" Width="59" >send</Button>
+                                            <TextBlock Grid.Row="17" Grid.Column="0" Name="VBP" Text="VBP:" Margin="2,4,0,4" Width="62" HorizontalAlignment="Left"></TextBlock>
+                                            <xctk:WatermarkTextBox Grid.Row="17" Watermark="14" Text="{Binding Main.VbpParam, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}" Margin="64,0,-5,0" Grid.ColumnSpan="3" HorizontalAlignment="Left" Width="161">
+                                                <i:Interaction.Behaviors>
+                                                    <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
+                                                </i:Interaction.Behaviors>
+                                            </xctk:WatermarkTextBox>
+                                            <Button Grid.Row="17"  Command="{Binding Main.SendFromTextBox, Source={StaticResource Locator}}" CommandParameter="{Binding ElementName=VBP, Path=Text}" Grid.Column="2" Margin="84,0,-21,0" HorizontalAlignment="Left" Width="59" >send</Button>
+                                            <TextBlock Grid.Row="18" Grid.Column="0" Name="HBP" Text="HBP:" Margin="2,4,0,4" Width="62" HorizontalAlignment="Left"></TextBlock>
+                                            <xctk:WatermarkTextBox Grid.Row="18" Watermark="20" Text="{Binding Main.HbpParam, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}" Margin="64,0,0,0" Grid.ColumnSpan="3" HorizontalAlignment="Left" Width="161">
+                                                <i:Interaction.Behaviors>
+                                                    <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
+                                                </i:Interaction.Behaviors>
+                                            </xctk:WatermarkTextBox>
+                                            <Button Grid.Row="18"  Command="{Binding Main.SendFromTextBox, Source={StaticResource Locator}}" CommandParameter="{Binding ElementName=HBP, Path=Text}" Grid.Column="2" Margin="84,0,-18,0" HorizontalAlignment="Left" Width="59" >send</Button>
+                                            <TextBlock Grid.Row="19" Grid.Column="0" Name="VACT" Text="VACT:" Margin="2,4,0,4" Width="62" HorizontalAlignment="Left"></TextBlock>
+                                            <xctk:WatermarkTextBox Grid.Row="19" Watermark="1920" Text="{Binding Main.VactParam, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}" Margin="64,0,0,0" Grid.ColumnSpan="3" HorizontalAlignment="Left" Width="161">
+                                                <i:Interaction.Behaviors>
+                                                    <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
+                                                </i:Interaction.Behaviors>
+                                            </xctk:WatermarkTextBox>
+                                            <Button Grid.Row="19"  Command="{Binding Main.SendFromTextBox, Source={StaticResource Locator}}" CommandParameter="{Binding ElementName=VACT, Path=Text}" Grid.Column="2" Margin="84,0,-15,0" HorizontalAlignment="Left" Width="59" >send</Button>
+                                            <TextBlock Grid.Row="20" Grid.Column="0" Name="HACT" Text="HACT:" Margin="2,4,0,4" Width="62" HorizontalAlignment="Left"></TextBlock>
+                                            <xctk:WatermarkTextBox Grid.Row="20" Watermark="1824" Text="{Binding Main.HactParam, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}" Margin="64,0,0,0" Grid.ColumnSpan="3" HorizontalAlignment="Left" Width="161">
+                                                <i:Interaction.Behaviors>
+                                                    <util:RegexTextBoxBehavior InputRegex="{StaticResource RegexHexStr}"/>
+                                                </i:Interaction.Behaviors>
+                                            </xctk:WatermarkTextBox>
+                                            <Button Grid.Row="20"  Command="{Binding Main.SendFromTextBox, Source={StaticResource Locator}}" CommandParameter="{Binding ElementName=HACT, Path=Text}" Grid.Column="2" Margin="84,0,-12,0" HorizontalAlignment="Left" Width="59" >send</Button>
+                                            <TextBlock Grid.Row="21" Grid.Column="0" Text="Normal:" Margin="0,2" Width="50" HorizontalAlignment="Left"></TextBlock>
+                                            <RadioButton Grid.Row="21" Grid.Column="0" Margin="0,2,0,0" HorizontalAlignment="Right" IsChecked="{Binding Main.Normal,Source={StaticResource Locator}}"></RadioButton>
+                                            <TextBlock Grid.Row="21" Grid.Column="1" Text="Compress:" Margin="0,2" Width="61" HorizontalAlignment="Left"></TextBlock>
+                                            <RadioButton Grid.Row="21" Grid.Column="1" Margin="60,2,0,0" HorizontalAlignment="Right" IsChecked="{Binding Main.Compress,Source={StaticResource Locator}}"></RadioButton>
+                                        </Grid>
+
+                                    </Expander>
+                                    <Expander Header="编程设置" IsExpanded="True" IsEnabled="{Binding Main.IsNetWorkSend,RelativeSource={RelativeSource FindAncestor,AncestorType=local:MainWindow}}" Height="auto">
+                                        <Grid Height="auto">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"></RowDefinition>
+                                                <RowDefinition Height="Auto"></RowDefinition>
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                                                <ColumnDefinition Width="*"></ColumnDefinition>
+                                            </Grid.ColumnDefinitions>
+
+                                            <TextBlock Grid.Row="0" Grid.Column="0">在线执行次数:</TextBlock>
+                                            <xctk:WatermarkTextBox Grid.Row="0" Grid.Column="1" Text="{Binding Main.WantToExeCount,RelativeSource={RelativeSource FindAncestor,AncestorType=local:MainWindow}}"></xctk:WatermarkTextBox>
+                                            <TextBlock Grid.Row="1" Grid.Column="0">文件序号:</TextBlock>
+                                            <xctk:WatermarkTextBox Grid.Row="1" Grid.Column="1" Text="{Binding Main.FileIndex,RelativeSource={RelativeSource FindAncestor,AncestorType=local:MainWindow}}"></xctk:WatermarkTextBox>
+                                        </Grid>
+                                    </Expander>
+                                </StackPanel>
+                                <!---->
+                            </GroupBox>
+                        </StackPanel>
                     </Grid>
                 </ScrollViewer>
             </TabItem>
+
+            <TabItem Header="编程" Background="{StaticResource CtlBkBrush}">
+                <Grid Background="{StaticResource CtlBkBrush}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+                    <avalonDock:DockingManager DocumentClosing="DockingManager_OnDocumentClosing" x:Name="DockingManager" Grid.Column="0" Grid.Row="0">
+                        <avalonDock:LayoutRoot PropertyChanged="OnLayoutRootPropertyChanged">
+                            <avalonDock:LayoutPanel Orientation="Horizontal">
+                                <avalonDock:LayoutAnchorablePane DockWidth="100">
+                                    <avalonDock:LayoutAnchorable x:Name="WinFormsWindow" FloatingHeight="200" ContentId="FileManager" Title="BuildWindow Window" CanHide="False" CanClose="False" >
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="40"></RowDefinition>
+                                                <RowDefinition Height="40"></RowDefinition>
+                                                <RowDefinition Height="40"></RowDefinition>
+                                                <RowDefinition Height="40"></RowDefinition>
+                                                <RowDefinition Height="40"></RowDefinition>
+                                                <RowDefinition Height="40"></RowDefinition>
+                                                <RowDefinition Height="40"></RowDefinition>
+                                                <RowDefinition Height="40"></RowDefinition>
+                                                <RowDefinition Height="40"></RowDefinition>
+                                            </Grid.RowDefinitions>
+                                            <Button Margin="8" Grid.Row="0" Content="编译文件" Command="{Binding Main.ProggramFile, Source={StaticResource Locator}}"></Button>
+                                            <Button Margin="8" Grid.Row="1" Content="下载文件" Command="{Binding Main.ProggramDownLoadFile, Source={StaticResource Locator}}" IsEnabled="{Binding Main.EnableBtn,Source={StaticResource Locator}}"></Button>
+                                            <Button Margin="8" Grid.Row="2" Content="导出文件" Command="{Binding Main.ProggramOutPutFile, Source={StaticResource Locator}}"></Button>
+                                            <Button Margin="8" Grid.Row="3" Content="单行执行" Command="{Binding Main.ProggramSendSingle, Source={StaticResource Locator}}"></Button>
+                                            <Button Margin="8" Grid.Row="4" Content="在线执行" Command="{Binding Main.ProggramSendALl, Source={StaticResource Locator}}"></Button>
+                                            <Button Margin="8" Grid.Row="5" Content="执行下一行" Command="{Binding Main.ExecuteNextLine, Source={StaticResource Locator}}"></Button>
+                                            <Button Margin="8" Grid.Row="6" Content="读取一行" Command="{Binding Main.ReadNextLine, Source={StaticResource Locator}}"></Button>
+                                        </Grid>
+                                    </avalonDock:LayoutAnchorable>
+                                </avalonDock:LayoutAnchorablePane>
+                                <avalonDock:LayoutDocumentPaneGroup>
+                                    <avalonDock:LayoutDocumentPane x:Name="LayoutDocumentPane" PropertyChanged="LayoutDocumentPane_OnPropertyChanged">
+                                    </avalonDock:LayoutDocumentPane>
+                                </avalonDock:LayoutDocumentPaneGroup>
+                                <avalonDock:LayoutAnchorablePaneGroup DockWidth="150">
+                                    <avalonDock:LayoutAnchorablePane>
+                                        <avalonDock:LayoutAnchorable CanAutoHide="True" ContentId="File" Title="FileManager" Hiding="OnToolWindow1Hiding" CanHide="False" CanClose="False">
+                                            <Grid Grid.Column="1" Grid.Row="1">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="*"></RowDefinition>
+                                                    <RowDefinition Height="auto"></RowDefinition>
+                                                </Grid.RowDefinitions>
+                                                <ListView Grid.Row="0" IsEnabled="{Binding Main.FileManaEnable,Source={StaticResource Locator}}" SelectionMode="Extended"
+                              ItemsSource="{Binding Main.ProgrammeFiles, Source={StaticResource Locator}, UpdateSourceTrigger=PropertyChanged}"
+                                Name="programFilesMana">
+                                                    <i:Interaction.Triggers>
+                                                       <i:EventTrigger EventName="MouseDoubleClick">
+                                                            <util:ExInvokeCommandAction Command="{Binding Main.FileItemSelectedChange, Source={StaticResource Locator}}" CommandParameter="{Binding ElementName=programFilesMana, Path=SelectedItem}"></util:ExInvokeCommandAction>
+                                                        </i:EventTrigger>
+                                                        <i:EventTrigger EventName="IsVisible">
+
+                                                        </i:EventTrigger>
+                                                    </i:Interaction.Triggers>
+                                                    <ListView.View>
+                                                        <GridView>
+                                                            <GridViewColumn Header="#" lvcctrl:RangeColumn.MinWidth="50">
+                                                                <GridViewColumn.CellTemplate>
+                                                                    <DataTemplate DataType="{x:Type local:ImgItemInfo}">
+                                                                        <StackPanel Orientation="Horizontal">
+                                                                            <TextBlock TextAlignment="Center" MinWidth="20"
+                                               Text="{Binding Mode=OneWay, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=ListViewItem}, Converter={StaticResource OrdinalConverter}}" />
+                                                                            <Grid  VerticalAlignment="Stretch" MinWidth="30" Margin="2">
+                                                                                <Grid.Style>
+                                                                                    <Style TargetType="{x:Type Grid}">
+                                                                                        <Setter Property="Background" Value="{x:Null}"/>
+                                                                                        <Style.Triggers>
+                                                                                            <DataTrigger Binding="{Binding ImgOpState}" Value="{x:Static local:ImgOpState.Success}">
+                                                                                                <Setter Property="Background" Value="Green"></Setter>
+                                                                                            </DataTrigger>
+                                                                                            <DataTrigger Binding="{Binding ImgOpState}" Value="{x:Static local:ImgOpState.Fail}">
+                                                                                                <Setter Property="Background" Value="Red"></Setter>
+                                                                                            </DataTrigger>
+                                                                                        </Style.Triggers>
+                                                                                    </Style>
+                                                                                </Grid.Style>
+                                                                            </Grid>
+                                                                        </StackPanel>
+                                                                    </DataTemplate>
+                                                                </GridViewColumn.CellTemplate>
+                                                            </GridViewColumn>
+
+                                                            <GridViewColumn Header="打开文件" lvcctrl:FixedColumn.Width="80">
+                                                                <GridViewColumn.CellTemplate>
+                                                                    <DataTemplate DataType="{x:Type local:ImgItemInfo}">
+                                                                        <Grid HorizontalAlignment="Left">
+                                                                            <CheckBox Grid.Column="0" IsChecked="{Binding IsActived, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center" HorizontalContentAlignment="Center"></CheckBox>
+                                                                        </Grid>
+                                                                    </DataTemplate>
+                                                                </GridViewColumn.CellTemplate>
+                                                            </GridViewColumn>
+
+                                                            <GridViewColumn Header="文件名" lvcctrl:RangeColumn.MinWidth="80">
+                                                                <GridViewColumn.CellTemplate>
+                                                                    <DataTemplate DataType="{x:Type local:ImgItemInfo}">
+                                                                        <TextBlock  TextAlignment="Center" 
+                                                                                    Text="{Binding Des, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center" HorizontalAlignment="Stretch"></TextBlock>
+                                                                    </DataTemplate>
+                                                                </GridViewColumn.CellTemplate>
+                                                            </GridViewColumn>
+
+                                                            <GridViewColumn Header="校验和" lvcctrl:RangeColumn.MinWidth="80">
+                                                                <GridViewColumn.CellTemplate>
+                                                                    <DataTemplate DataType="{x:Type local:ImgItemInfo}">
+                                                                        <TextBox  TextAlignment="Center" 
+                                                                                  Text="{Binding Cs, UpdateSourceTrigger=PropertyChanged}" MinWidth="60" VerticalAlignment="Center" HorizontalAlignment="Stretch"></TextBox>
+                                                                    </DataTemplate>
+                                                                </GridViewColumn.CellTemplate>
+                                                            </GridViewColumn>
+
+                                                            <GridViewColumn Header="文件路径" lvcctrl:ProportionalColumn.Width="100" Width="50">
+                                                                <GridViewColumn.CellTemplate>
+                                                                    <DataTemplate DataType="{x:Type local:ImgItemInfo}">
+                                                                        <Grid>
+                                                                            <TextBlock Text="{Binding FnPath, UpdateSourceTrigger=PropertyChanged}" IsHyphenationEnabled="True"/>
+                                                                        </Grid>
+                                                                    </DataTemplate>
+                                                                </GridViewColumn.CellTemplate>
+                                                            </GridViewColumn>
+                                                            <GridViewColumn Header="编译序号" lvcctrl:ProportionalColumn.Width="100" Width="50">
+                                                                <GridViewColumn.CellTemplate>
+                                                                    <DataTemplate DataType="{x:Type local:ImgItemInfo}">
+                                                                        <Grid>
+                                                                            <TextBlock Text="{Binding FileIndex, UpdateSourceTrigger=PropertyChanged}" IsHyphenationEnabled="True"/>
+                                                                        </Grid>
+                                                                    </DataTemplate>
+                                                                </GridViewColumn.CellTemplate>
+                                                            </GridViewColumn>
+                                                        </GridView>
+                                                    </ListView.View>
+                                                </ListView>
+                                                <UniformGrid Rows="1" Grid.Row="1" Height="40">
+                                                    <UniformGrid.Resources>
+                                                        <Style TargetType="Button">
+                                                            <Setter Property="Width" Value="60"></Setter>
+                                                        </Style>
+                                                    </UniformGrid.Resources>
+                                                    <Button Margin="8" Grid.Column="4" Grid.Row="0" Content="移除文件" Command="{Binding Main.ProggramRemoveFile, Source={StaticResource Locator}}"></Button>
+                                                    <Button Margin="8" Grid.Column="3" Grid.Row="0" Content="添加文件" Command="{Binding Main.ProggramAddFile, Source={StaticResource Locator}}"></Button>
+                                                    <Button Margin="8" Grid.Column="6" Grid.Row="0" Content="保存/新建" Command="{Binding Main.ProgrammeSaveFile, Source={StaticResource Locator}}"></Button>
+                                                </UniformGrid>
+                                            </Grid>
+                                        </avalonDock:LayoutAnchorable>
+                                    </avalonDock:LayoutAnchorablePane>
+                                </avalonDock:LayoutAnchorablePaneGroup>
+                            </avalonDock:LayoutPanel>
+                            <avalonDock:LayoutRoot.BottomSide>
+                                <avalonDock:LayoutAnchorSide>
+                                    <avalonDock:LayoutAnchorGroup>
+                                        <avalonDock:LayoutAnchorable Title="LogView" CanClose="False" FloatingHeight="160" AutoHideMinHeight="160" AutoHideHeight="160">
+                                            <agCustom:LogItemViewEx Margin="0,2" Height="160" BorderBrush="Black" MsgLogItems="{Binding Main.LogItems, Source={StaticResource Locator}}"/>
+                                        </avalonDock:LayoutAnchorable>
+                                    </avalonDock:LayoutAnchorGroup>
+                                </avalonDock:LayoutAnchorSide>
+                            </avalonDock:LayoutRoot.BottomSide>
+                        </avalonDock:LayoutRoot>
+                    </avalonDock:DockingManager>
+                </Grid>
+                
+            </TabItem>
+
         </TabControl>
     </Grid>
 </Window>
