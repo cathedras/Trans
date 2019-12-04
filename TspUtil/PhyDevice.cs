@@ -314,8 +314,11 @@ namespace TspUtil
         private CancellationTokenSource _cancelToken;
         private bool _isReceiveNg;
         private long _imgLenCount;
+        private Gbl _gbl;
         public static Regex picok = new Regex("pic ok", RegexOptions.IgnoreCase);
         public static Regex picNG = new Regex("pic NG", RegexOptions.IgnoreCase);
+        public static Regex ddrOffOk = new Regex("ddroff ok", RegexOptions.IgnoreCase);
+        public static Regex ddrOffNg = new Regex("ddroff NG", RegexOptions.IgnoreCase);
         public static Regex eraseOk = new Regex("erase ok", RegexOptions.IgnoreCase);
         public static Regex eraseNG = new Regex("erase NG", RegexOptions.IgnoreCase);
         public static Regex storeOk = new Regex("store ok", RegexOptions.IgnoreCase);
@@ -328,20 +331,22 @@ namespace TspUtil
         public static Regex showng = new Regex("show ng", RegexOptions.IgnoreCase);
         public static Regex poweronok = new Regex("poweron ok", RegexOptions.IgnoreCase);
         public static Regex poweronng = new Regex("poweron ng", RegexOptions.IgnoreCase);
-        public static Regex slavePowerOn = new Regex("DUT.PowerON,0000", RegexOptions.IgnoreCase);
-        public static Regex slavepowerOff = new Regex("DUT.powerOff,0000", RegexOptions.IgnoreCase);
-        public static Regex slaveCheckSum = new Regex("checksum,0000", RegexOptions.IgnoreCase);
+        public static Regex slavePowerOn = new Regex("P.DUT.PowerON", RegexOptions.IgnoreCase);
+        public static Regex slavepowerOff = new Regex("P.DUT.PowerOff", RegexOptions.IgnoreCase);
+        public static Regex slaveCheckSum = new Regex("p.checksum,0000", RegexOptions.IgnoreCase);
         public static Regex slaveShow = new Regex("ShowImage,0000", RegexOptions.IgnoreCase);
-        public static Regex progmOk = new Regex("OK", RegexOptions.IgnoreCase);
-        public static Regex progmEr = new Regex("ER", RegexOptions.IgnoreCase);
-        public static Regex slaveWrite = new Regex("write,0000", RegexOptions.IgnoreCase);
-        public static Regex slaveRead = new Regex("Read,0000", RegexOptions.IgnoreCase);
+        public static Regex progmOk = new Regex(@"\{OK\d*", RegexOptions.IgnoreCase);
+        public static Regex progmEr = new Regex(@"\{ER\d*", RegexOptions.IgnoreCase);
+        public static Regex slaveWrite = new Regex("p.register.write,0000", RegexOptions.IgnoreCase);
+        public static Regex slaveRead = new Regex("p.register.Read", RegexOptions.IgnoreCase);
+        public static Regex deviceVersion = new Regex("p.version", RegexOptions.IgnoreCase);
+
         
         public void InitParam()
         {
             Sock.SendBufferSize =  1024 * 4;
             Sock.ReceiveBufferSize = 1024 * 4;
-            Sock.NoDelay = true;
+           // Sock.NoDelay = true;
             
 
             _cancelToken = new CancellationTokenSource();
@@ -398,6 +403,12 @@ namespace TspUtil
 
         public TcpSocketEx Sock { get => _sock; set => _sock = value; }
 
+        public Gbl Gbl1
+        {
+            get { return _gbl; }
+            set { _gbl = value; }
+        }
+
         private static readonly ILog _log = LogManager.GetLogger("exlog");
 
         private SemaphoreSlim _slim = new SemaphoreSlim(1);
@@ -420,8 +431,12 @@ namespace TspUtil
             {
                 sampleBytes = sendlst.Take(sendlst.Length).ToArray();
             }
-            var msg = string.Join(" ", Array.ConvertAll(sampleBytes, input => $"{input:X2}"));
-            _log.Debug($"--> Len: {sendlst.Length:D5}  Raw: {msg} ....");
+
+            if (_gbl.UsingLogInfo)
+            {
+                var msg = string.Join(" ", Array.ConvertAll(sampleBytes, input => $"{input:X2}"));
+                _log.Debug($"--> Len: {sendlst.Length:D5}  Raw: {msg}:{ASCIIEncoding.ASCII.GetString(sendlst)} ....");
+            }
 
             bool isFrameSendSuccess = false;
             _slim.Wait(Timeout.Infinite);
@@ -464,15 +479,19 @@ namespace TspUtil
 
             byte[] buf = new byte[512];
 
-            
-            int reclen = Sock.Receive(buf,SocketFlags.None);
+
+            int reclen = Sock.Receive(buf, SocketFlags.None);
             if (reclen > 0)
             {
                 byte[] temp = new byte[reclen];
                 Array.Copy(buf, 0, temp, 0, reclen);
                 lst.AddRange(temp);
                 //Console.WriteLine($"{string.Join($" ", Array.ConvertAll(temp, input => $"{input:X2}"))}:{Encoding.ASCII.GetString(temp)}");
-                _log.Debug($"<--- {string.Join($" ", Array.ConvertAll(temp, input => $"{input:X2}"))}:{Encoding.ASCII.GetString(temp)}");
+                if (_gbl.UsingLogInfo)
+                {
+                    _log.Debug(
+                        $"<--- {string.Join($" ", Array.ConvertAll(temp, input => $"{input:X2}"))}:{Encoding.ASCII.GetString(temp)}");
+                }
             }
 
             return lst;
@@ -481,12 +500,13 @@ namespace TspUtil
         public bool Connected()
         {
             var status = _sock.IsSocketConnected();
-            return (_sock.ReceiveTimeout < 0);
+           // var sendOk = DataSendFrame(App.Locator.Main.StringToByteArray("version"), 0,2000);
+            return (_sock.ReceiveTimeout < 0)||status;
         }
 
         public bool Disconnect()
         {
-            _sock.Disconnect(true);
+            _sock.Disconnect(false);
             if (!_sock.Connected)
             {
                 return true;

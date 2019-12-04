@@ -3,7 +3,7 @@
                     xmlns:local="clr-namespace:TspUtil">
     <ControlTemplate x:Key="ButtonTemplate" TargetType="{x:Type CheckBox}">
         <Grid>
-            <Ellipse x:Name="outCircle" Width="21.2" Height="21.2">
+            <Ellipse x:Name="outCircle" Width="21.3" Height="21.3">
                 <Ellipse.Fill>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
                         <GradientStop Offset="0" Color="Transparent" />
@@ -12,8 +12,7 @@
             </Ellipse>
             <Ellipse x:Name="smCircle" RenderTransformOrigin=".5,.5" Width="20" Height="20">
                 <Ellipse.RenderTransform>
-                    <ScaleTransform ScaleX=".9" ScaleY=".9">
-                    </ScaleTransform>
+                    <ScaleTransform ScaleX=".9" ScaleY=".9"></ScaleTransform>
                 </Ellipse.RenderTransform>
                 <Ellipse.Fill>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
@@ -24,34 +23,24 @@
         </Grid>
         <ControlTemplate.Triggers>
             <Trigger Property="IsPressed" Value="True">
-                <Setter TargetName="outCircle" Property="Fill" Value="White">
-                </Setter>
-                <Setter TargetName="smCircle" Property="Fill" Value="Red">
-                </Setter>
+                <Setter TargetName="outCircle" Property="Fill" Value="White"></Setter>
+                <Setter TargetName="smCircle" Property="Fill" Value="Red"></Setter>
             </Trigger>
             <Trigger Property="IsFocused" Value="True">
-                <Setter TargetName="outCircle" Property="Fill" Value="White">
-                </Setter>
-                <Setter TargetName="smCircle" Property="Fill" Value="Red">
-                </Setter>
+                <Setter TargetName="outCircle" Property="Fill" Value="White"></Setter>
+                <Setter TargetName="smCircle" Property="Fill" Value="Red"></Setter>
             </Trigger>
             <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="outCircle" Property="Fill" Value="Transparent">
-                </Setter>
-                <Setter TargetName="smCircle" Property="Fill" Value="Transparent">
-                </Setter>
+                <Setter TargetName="outCircle" Property="Fill" Value="Transparent"></Setter>
+                <Setter TargetName="smCircle" Property="Fill" Value="Transparent"></Setter>
             </Trigger>
             <Trigger Property="IsChecked" Value="True">
-                <Setter TargetName="outCircle" Property="Fill" Value="White">
-                </Setter>
-                <Setter TargetName="smCircle" Property="Fill" Value="Red">
-                </Setter>
+                <Setter TargetName="outCircle" Property="Fill" Value="White"></Setter>
+                <Setter TargetName="smCircle" Property="Fill" Value="Red"></Setter>
             </Trigger>
             <Trigger Property="IsChecked" Value="False">
-                <Setter TargetName="outCircle" Property="Fill" Value="Transparent">
-                </Setter>
-                <Setter TargetName="smCircle" Property="Fill" Value="Transparent">
-                </Setter>
+                <Setter TargetName="outCircle" Property="Fill" Value="Transparent"></Setter>
+                <Setter TargetName="smCircle" Property="Fill" Value="Transparent"></Setter>
             </Trigger>
         </ControlTemplate.Triggers>
     </ControlTemplate>

@@ -39,7 +39,7 @@ namespace TspUtil
             Port = 8080;
             IsInverse = false;
             IsAddSizeToHeader = true;
-            UsingNoBoundLst = false;
+            IsCalculateChecksum = true;
             IsCrossData = false;
             IsInferiorData = false;
             IsPicReArrange = false;
@@ -54,10 +54,16 @@ namespace TspUtil
             ProgmWorkDir = "../workDirectory";
             IsAllComp = false;
             WantToExeCount = 1;
-            
+            NormalMode = false;
+            DscMode = true;
+            ExtDscMode = true;
+            ReadParamCount = 0;
+            UsingLogInfo = false;
+            LangSet = Lang.English.ToString();
         }
 
        
+
 
         public bool IsPicReArrange { get; set; }
 
@@ -72,6 +78,7 @@ namespace TspUtil
         [SectionName("PIC")] public int EvenOffset { get;  set; }
         [SectionName("PIC")] public string PadStr { get; set; }
         [SectionName("PIC")] public string PadLoc { get; set; }
+        [SectionName("PIC")] public bool UsingLogInfo { get; set; } 
 
 
         [SectionName("PCOMM")] public string SelectCom { get; set; }
@@ -92,13 +99,17 @@ namespace TspUtil
         public int FrameRetrySize { get; set; } = 4 * 64;
         public int SendBufferSize { get; set; } = 1024 * 4;
         public bool UsingSimData { get; set; }
+        public string LangSet { get; set; }
         [SectionName("NETWORK")] public string LocalIpAddress { get; set; }
         [SectionName("NETWORK")] public string RemoteIpAddress { get; set; }
         [SectionName("NETWORK")] public int Port { get; set; }
-        public bool IsInverse { get; set; }
+        [SectionName("NETWORK")] public bool NormalMode { get; set; }
+        [SectionName("NETWORK")] public bool DscMode { get; set; }
+        [SectionName("NETWORK")] public bool ExtDscMode { get; set; }
+        [SectionName("NETWORK")] public bool IsInverse { get; set; }
 
         public bool IsAddSizeToHeader { get; set; }
-        public bool UsingNoBoundLst { get; set; }
+        public bool IsCalculateChecksum { get; set; }
         public bool IsCrossData { get; set; }
         public bool IsInferiorData { get; set; }
         public string FileListXml { get; set; }
@@ -114,30 +125,10 @@ namespace TspUtil
 
         [SectionName("PROGRAMME")] public int FontSize { get; set; }
         [SectionName("PROGRAMME")] public string ProgmWorkDir { get; set; }
-        [SectionName("PROGRAMME")] public string Iovcc { get; set; }
-        [SectionName("PROGRAMME")] public string Vsp { get; set; }
-        [SectionName("PROGRAMME")] public string Resx { get; set; }
-        [SectionName("PROGRAMME")] public string Bright { get; set; }
-
-        [SectionName("PROGRAMME")] public string Pll { get; set; }
-
-        [SectionName("PROGRAMME")] public string Regb6 { get; set; }
-        [SectionName("PROGRAMME")] public string Regd6 { get; set; }
-        [SectionName("PROGRAMME")] public string Regde { get; set; }
-
-        [SectionName("PROGRAMME")] public string Panelb6 { get; set; }
-
-        [SectionName("PROGRAMME")] public string Vsa { get; set; }
-        [SectionName("PROGRAMME")] public string Has { get; set; }
-        [SectionName("PROGRAMME")] public string Vfp { get; set; }
-        [SectionName("PROGRAMME")] public string Hfp { get; set; }
-        [SectionName("PROGRAMME")] public string Vbp { get; set; }
-        [SectionName("PROGRAMME")] public string Hbp { get; set; }
-        [SectionName("PROGRAMME")] public string Hact { get; set; }
-        [SectionName("PROGRAMME")] public string Vact { get; set; }
+       
         [SectionName("PROGRAMME")] public bool IsAllComp { get; set; }
         [SectionName("PROGRAMME")] public int WantToExeCount { get; set; }
-
+        [SectionName("PROGRAMME")] public int ReadParamCount { get; set; }
 
 
 

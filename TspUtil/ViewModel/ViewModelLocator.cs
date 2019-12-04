@@ -46,8 +46,8 @@ namespace TspUtil
             SimpleIoc.Default.Register<MianViewModel>();
             SimpleIoc.Default.Register<SerialDev>();
             SimpleIoc.Default.Register<NetDev>();
-            SimpleIoc.Default.Register<ClientNetDev>();
             SimpleIoc.Default.Register<TextEitorModal>();
+            SimpleIoc.Default.Register<KeySettingModal>();
         }
 
         public MianViewModel Main
@@ -71,18 +71,25 @@ namespace TspUtil
                 return ServiceLocator.Current.GetInstance<NetDev>();
             }
         }
-        public ClientNetDev ClientDev
-        {
-            get
-            {
-                return ServiceLocator.Current.GetInstance<ClientNetDev>();
-            }
-        }
+        //public ClientNetDev ClientDev
+        //{
+        //    get
+        //    {
+        //        return ServiceLocator.Current.GetInstance<ClientNetDev>();
+        //    }
+        //}
         public TextEitorModal TextModal
         {
             get
             {
                 return ServiceLocator.Current.GetInstance<TextEitorModal>();
+            }
+        }
+        public KeySettingModal KeyBind
+        {
+            get
+            {
+                return ServiceLocator.Current.GetInstance<KeySettingModal>();
             }
         }
         public static void Cleanup()

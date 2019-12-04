@@ -217,6 +217,18 @@ namespace TspUtil
             }           
         }
 
+        public static async void Connection(TcpClient client, Gbl gbl)
+        {
+            try
+            {
+                await client.ConnectAsync(gbl.RemoteIpAddress, gbl.Port);
+            }
+            catch (Exception ex)
+            {
+                throw new SocketException(-1);
+            }
+        }
+        
         public static void ReleaseConnection(TcpSocketEx client)
         {
             client.Disconnect(false);

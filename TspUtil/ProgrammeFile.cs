@@ -1,10 +1,8 @@
-﻿using ICSharpCode.AvalonEdit;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using ICSharpCode.AvalonEdit.Document;
 
 namespace TspUtil
 {
@@ -18,11 +16,12 @@ namespace TspUtil
             CmdMap.Add("file_end", new AlgCmd("CMD_FILE_END", 0x82));
 
             CmdMap.Add("comment", new AlgCmd("CMD_COMMENT", 0x84));
-            CmdMap.Add("print", new AlgCmd("CMD_PRINTF", 0x85));
+            CmdMap.Add("print", new AlgCmd("CMD_PRINTSTR", 0x85));
 
             CmdMap.Add("delay_s", new AlgCmd("CMD_DELAY_S", 0x86));
             CmdMap.Add("delay_ms", new AlgCmd("CMD_DELAY_MS", 0x87));
             CmdMap.Add("delay_us", new AlgCmd("CMD_DELAY_US", 0x88));
+            CmdMap.Add("show_data", new AlgCmd("CMD_MEMORY_SHOW", 0x89));
 
             CmdMap.Add("ssd_powermode", new AlgCmd("CMD_SSD2832_POWERMODE", 0x90));
             CmdMap.Add("ssd_rest", new AlgCmd("CMD_SSD2832_RESET", 0x91));
@@ -34,14 +33,21 @@ namespace TspUtil
             CmdMap.Add("mipi_write", new AlgCmd("CMD_MIPI_WRITE", 0xA0));
             CmdMap.Add("mipi_read", new AlgCmd("CMD_MIPI_READ", 0xA1));
             CmdMap.Add("mipi_video", new AlgCmd("CMD_MIPI_VIDEO", 0xA2));
+            CmdMap.Add("mipi_timing", new AlgCmd("CMD_MIPI_TIMING", 0xA3));
+            CmdMap.Add("mipi_mode", new AlgCmd("CMD_MIPI_MODE", 0xA4));
 
-            CmdMap.Add("fpga_reset", new AlgCmd("CMD_FPGA_RESET", 0xB0));
-            CmdMap.Add("fpga_timing", new AlgCmd("CMD_FPGA_WRITE", 0xB1));
-            CmdMap.Add("fpga_read", new AlgCmd("CMD_FPGA_READ", 0xB2));
+            //CmdMap.Add("driver_reset", new AlgCmd("CMD_FPGA_RESET", 0xB0));
+            CmdMap.Add("driver_write", new AlgCmd("CMD_FPGA_WRITE", 0xB1));
+            CmdMap.Add("driver_read", new AlgCmd("CMD_FPGA_READ", 0xB2));
+            CmdMap.Add("driver_dsc", new AlgCmd("CMD_FPGA_DSC", 0xB3));
+            CmdMap.Add("driver_video", new AlgCmd("CMD_FPGA_VIDEO", 0xB4));
+            CmdMap.Add("driver_pclk", new AlgCmd("CMD_FPGA_PCLK", 0xB5));
+            CmdMap.Add("driver_timing", new AlgCmd("CMD_FPGA_TIMING", 0xB6));
 
             CmdMap.Add("show_image", new AlgCmd("CMD_SHOW_IMAGE", 0xB8));
             CmdMap.Add("show_color", new AlgCmd("CMD_SHOW_COLOR", 0xB9));
             CmdMap.Add("show_special", new AlgCmd("CMD_SHOW_SPECIAL", 0xBa));
+            CmdMap.Add("show_cycle", new AlgCmd("CMD_SHOW_CYCLE", 0xBb));
 
             CmdMap.Add("set_volt", new AlgCmd("CMD_VOLT_SET", 0xC0));
             CmdMap.Add("set_curr", new AlgCmd("CMD_CURR_SET", 0xC1));
@@ -63,25 +69,7 @@ namespace TspUtil
         {
             get => _mapKey ?? (_mapKey = new Dictionary<string, AlgCmd>());
         }
-        public static void DisplayValidationError(TextEditor editor, TextMarkerServices text, string message, int linePosition, int lineNumber)
-        {
-            if (lineNumber >= 1 && lineNumber <= editor.Document.LineCount)
-            {
-                int offset = editor.Document.GetOffset(new TextLocation(lineNumber, linePosition));
-                int endOffset = TextUtilities.GetNextCaretPosition(editor.Document, offset, System.Windows.Documents.LogicalDirection.Forward, CaretPositioningMode.WordBorderOrSymbol);
-                if (endOffset < 0)
-                {
-                    endOffset = editor.Document.TextLength;
-                }
-                int length = endOffset - offset;
-
-                if (length < 2)
-                {
-                    length = Math.Min(2, editor.Document.TextLength - offset);
-                }
-                text.Create(offset, length, message);
-            }
-        }
+        
         /// <summary>
         /// Make a byte array for the string
         /// </summary>

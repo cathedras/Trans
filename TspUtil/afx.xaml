@@ -14,4 +14,7 @@
             <x:Type TypeName="local:PadLoc" />
         </ObjectDataProvider.MethodParameters>
     </ObjectDataProvider>
+    <ControlTemplate x:Key="ButtonTemplate" TargetType="{x:Type Button}">
+        
+    </ControlTemplate>
 </ResourceDictionary>

@@ -4,20 +4,22 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:TspUtil"
-             xmlns:avalonedit="http://icsharpcode.net/sharpdevelop/avalonedit"
+             xmlns:edit ="clr-namespace:ScintillaNET;assembly=ScintillaNET"
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
+             d:DesignHeight="450" d:DesignWidth="800"
+             SizeChanged="TextEditorTemplate_OnSizeChanged">
     <Control.Resources>
         <ResourceDictionary Source="Resource.xaml"></ResourceDictionary>
     </Control.Resources>
     <Grid> 
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="26"></ColumnDefinition>
             <ColumnDefinition Width="*"></ColumnDefinition>
         </Grid.ColumnDefinitions>
-        
-                                                           
-        <ScrollViewer Name="BreakDown"
+        <WindowsFormsHost HorizontalAlignment="Left" VerticalAlignment="Top" Width="auto" Height="auto">
+            <edit:Scintilla x:Name="TextEditor" Dock="Fill" AutoSize="True" CursorChanged="TextEditor_OnCursorChanged" CaretLineVisible="True" TextChanged="Control_OnTextChanged" MarginClick="Scintilla_OnMarginClick" CharAdded="Scintilla_OnCharAdded"></edit:Scintilla>
+        </WindowsFormsHost>
+
+        <!--<ScrollViewer Name="BreakDown"
                       VerticalScrollBarVisibility="Hidden"
                       HorizontalScrollBarVisibility="Hidden" Margin="0,0,0,15">
             <ListBox  
@@ -25,21 +27,22 @@
                     ScrollViewer.VerticalScrollBarVisibility="Disabled" 
                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                     ItemsSource="{Binding TextModal.BreakPoints,Source={StaticResource Locator}}" 
-                    BorderBrush="Transparent" 
-                    VerticalAlignment="Center" Height="435"
+                    BorderBrush="Transparent " 
+                   
+                    VerticalAlignment="Center" Height="auto"
                     >
                     <ListBox.ItemTemplate>
                         <DataTemplate DataType="{x:Type ListBox}">
                             <Grid Background="{Binding IsRunning}">
-                                <CheckBox IsChecked="{Binding BreakDown}" Template="{StaticResource ButtonTemplate}"></CheckBox>
-                                <TextBlock Text="{Binding Id}" Height="{Binding ElementName=textEditor,Path=FontSize}" Visibility="Collapsed"></TextBlock>
+                                <CheckBox IsChecked="{Binding BreakDown}" Template="{StaticResource ButtonTemplate}" ></CheckBox>
+                            --><!--<TextBlock Text="{Binding Id}" Height="21.3" Visibility="Collapsed"></TextBlock>--><!--{Binding TextModal.LineHeight,Source={StaticResource Locator}}--><!--
                             </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
-            </ScrollViewer>
+            </ScrollViewer>-->
 
-        <avalonedit:TextEditor Grid.Column="1" x:Name="textEditor" 
+        <!--<avalonedit:TextEditor Grid.Column="1" x:Name="textEditor" 
                                ShowLineNumbers="True" 
                                SyntaxHighlighting="Operation"
                                TextChanged="TextEditor_OnTextChanged"
@@ -57,6 +60,6 @@
                     <MenuItem Command="Paste" />
                 </ContextMenu>
             </avalonedit:TextEditor.ContextMenu>
-        </avalonedit:TextEditor>
+        </avalonedit:TextEditor>-->
     </Grid>
 </UserControl>

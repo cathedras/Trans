@@ -11,11 +11,6 @@ using System.Windows.Input;
 using System.Xml;
 using Elcommon.AgLib;
 using ElCommon.Util;
-using ICSharpCode.AvalonEdit;
-using ICSharpCode.AvalonEdit.Document;
-using ICSharpCode.AvalonEdit.Highlighting;
-using ICSharpCode.AvalonEdit.Highlighting.Xshd;
-using ICSharpCode.AvalonEdit.Rendering;
 using Microsoft.Win32;
 using Xceed.Wpf.AvalonDock;
 using Xceed.Wpf.AvalonDock.Layout;
@@ -48,22 +43,7 @@ namespace TspUtil
             get { return validateCommand; }
         }
 
-        private void Validate(object sender, ExecutedRoutedEventArgs e)
-        {
-            //IServiceProvider sp = textEditor;
-            //var markerService = (TextMarkerServices)sp.GetService(typeof(TextMarkerServices));
-            //markerService.Clear();
 
-            //try
-            //{
-            //    var document = new XmlDocument { XmlResolver = null };
-            //    document.LoadXml(textEditor.Document.Text);
-            //}
-            //catch (XmlException ex)
-            //{
-            //    ProgrammeUtil.DisplayValidationError(textEditor,Vm.Text,ex.Message, ex.LinePosition, ex.LineNumber);
-            //}
-        }
        
         protected override void OnClosed(EventArgs e)
         {
@@ -149,12 +129,13 @@ namespace TspUtil
                         var edi = App.Locator.TextModal.AllFileEditor;
                         for (int i = 0; i < edi.Count; i++)
                         {
-                            if (edi[i].FileName == item.Des)
+                            if (edi[i].FileName.Equals(item.Des))
                             {
-                                App.Locator.TextModal.AllFileEditor.RemoveAt(i);
+                                App.Locator.TextModal.AllFileEditor.Remove(edi[i]);
                                 if (!App.Locator.TextModal.AllFileEditor.Any())
                                 {
                                     App.Locator.Main.CurProgmFile = string.Empty;
+                                    App.Locator.Main.CurEditor = null;
                                 }
                                 break;
                             }
@@ -162,7 +143,6 @@ namespace TspUtil
                         break;
                     }
                 }
-
             }
         }
 
@@ -178,11 +158,26 @@ namespace TspUtil
                     if (p.Equals(item.Des))
                     {
                         App.Locator.Main.CurProgmFile = item.FnPath;
+                        App.Locator.Main.CurEditor = App.Locator.TextModal.CurFileEdit(item.Des);
                         break;
                     }
                 }
             }
-            
+
+        }
+
+        private void TablePanel_Selected(object sender, RoutedEventArgs e)
+        {
+            var tab = (TabControl) sender;
+            //App.Locator.Main.AddLogMsg($"{tab.Items.Count}{tab.SelectedIndex}");
+            if (tab.SelectedIndex == 2)
+            {
+                App.Locator.Main.OperateEnable = true;
+            }
+            else
+            {
+                App.Locator.Main.OperateEnable = false;
+            }
         }
     }
 }

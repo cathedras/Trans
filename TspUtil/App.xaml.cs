@@ -41,17 +41,14 @@ namespace TspUtil
 
     public class TspStartUp
     {
+        private readonly static ILog _log = LogManager.GetLogger("exlog");
         private static List<string> path = new List<string>();
         [STAThread]
         public static void Main(string[] args)
         {
-
             if (args.Any())
             {
-                for(int i=1;i<args.Length; i++)
-                {
-                    path.Add(args[i]);
-                }
+                path.AddRange(args);
                 ParseCmd(args[0]);
             }
             //try
@@ -74,11 +71,11 @@ namespace TspUtil
             //{
             //    Console.WriteLine(e.ToString());
             //}
-            ConsoleDebug.Hide();
-            App app = new App();
-            MainWindow window=new MainWindow();
-            app.MainWindow = window;
-            app.Run(new MainWindow());
+            //ConsoleDebug.Hide();
+            //App app = new App();
+            //MainWindow window=new MainWindow();
+            //app.MainWindow = window;
+            //app.Run(new MainWindow());
 
         }
 
@@ -87,47 +84,55 @@ namespace TspUtil
             switch (cmd)
             {
                 case "-push":
-                    if (path.Any())
-                    {
-                        SendToDevice(path.ToArray());
-                    }
+                    SendToDevice(path.ToArray());
                     break;
                 case "-pull":
-
                     break;
-                   
+                default:
+                    break;
             }
             return string.Empty;
         }
 
-
+        /// <summary>
+        /// 须修改
+        /// </summary>
+        /// <param name="args"></param>
         public static void SendToDevice(string[] args)
         {
             if (args.Any())
             {
+                MianViewModel.IsCmdRun = true;
                 var vm = new MianViewModel();
                 vm.AddLogMsg("启动命令：TspUtil,version:1.0.2");
-                vm.IsCmdRun = true;
-                // vm.TestExecute(); 
-                // Trace.WriteLine("hello");
-                foreach (var item in args)
+                //vm.ClearSendList();
+                for (int i=1;i<args.Length;i++)
                 {
-                    var itms = item.Split('\\');
-                    vm.ClearSendList();
+                    vm.AddLogMsg($"{args[i]}");
+                    var itms = args[i].Split('\\');
                     vm.ImgItemInfos.Add(new ImgItemCmd()
                     {
-                        FnPath = item,
+                        FnPath = args[i],
                         Cs = "",
                         Des = itms.LastOrDefault(),
                         IsActived = true,
+                        FileIndex = i,
                     });
                 }
                 vm.SockConnect();
-                vm.CmdNetWorkSend();
+                var isOk = vm.SendByCmd();
                 vm.SockDisconnect();
-
+                if (isOk)
+                {
+                    Environment.Exit(0);
+                }
+                else
+                {
+                    Environment.Exit(-1);
+                }
+                
                 // ConsoleDebug.FreeConsole();
-                Environment.Exit(0);
+              //  Environment.Exit(0);
 
             }
         }

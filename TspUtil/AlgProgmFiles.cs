@@ -1,480 +1,368 @@
-﻿using ICSharpCode.AvalonEdit.Document;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using ICSharpCode.AvalonEdit;
 using System.IO;
 using System.Resources;
 using System.Windows;
 using System.Windows.Documents;
+using System.Windows.Shapes;
+using TspUtil.ViewModel;
 
 namespace TspUtil
 {
     public class AlgProgmFiles
     {
         private Dictionary<string, AlgCmd> _algMap;
-        private TextEditor _edit;
+        private EditorContent _editContent;
         private string _curProgmFile;
 
-        public AlgProgmFiles(string curProgmFile, TextEditor edit, Dictionary<string, AlgCmd> algMap)
+        public AlgProgmFiles(string curProgmFile, EditorContent editContent, Dictionary<string, AlgCmd> algMap)
         {
             _curProgmFile = curProgmFile;
             _algMap = algMap;
-            _edit = edit;
+            _editContent = editContent;
         }
 
         public AlgProgmFiles()
         {
         }
 
-        public List<byte[]> CompileLine(DocumentLine line,int progmCurLine)
+        public List<byte[]> CompileLine(string lineText,int lineNum)
         {
             var data = new List<byte[]>();
-            if (line.LineNumber == progmCurLine)
+            var cmd = string.Empty;
+            try
             {
-                try
+                var rgx = new Regex("(0[xX])([0-9a-fA-F]+)");
+                var numberRegx = new Regex("\\d+");
+                var percentage = new Regex("\\d+%");
+                var kNum = new Regex("\\d+kHz", RegexOptions.IgnoreCase);
+                var strParam = new Regex("\\dlane", RegexOptions.IgnoreCase);
+                var strBit = new Regex("\\d+bit", RegexOptions.IgnoreCase);
+                var tmp = new List<byte>();
+                var curData = new List<byte>();
+
+
+                if (!lineText.StartsWith("//") && !string.IsNullOrEmpty(lineText) && lineText!="\r\n") //代表数据行
                 {
-                    var rgx = new Regex("(0[xX])([0-9a-fA-F]+)");
-                    var numberRegx = new Regex("\\d+");
-                    var percentage = new Regex("\\d+%");
-                    var kNum = new Regex("\\d+kHz",RegexOptions.IgnoreCase);
-                    var strParam = new Regex("\\dlane",RegexOptions.IgnoreCase);
-                    var strBit = new Regex("\\d+bit",RegexOptions.IgnoreCase);
-                    var tmp = new List<byte>();
-                    var curData = new List<byte>();
-                    var lineText = string.Empty;
-                    Application.Current.Dispatcher.Invoke(() =>
+                    var finish = lineText.IndexOf(";");
+                    var ann = lineText.IndexOf("//");
+                    var stringIndex = lineText.IndexOf('\"',0);
+                    var last = lineText.LastIndexOf('\"');
+                    if (finish > ann && finish > 0 && ann > 0)
                     {
-                        lineText = _edit.Document.GetText(line.Offset, line.Length);
+                        lineText = lineText.Substring(0, ann).Trim();
+                    }
+                    else if (finish < ann && finish > 0 && ann > 0)
+                    {
+                        lineText = lineText.Substring(0, finish).Trim();
+                    }
+                    else if (ann > 0)
+                    {
+                        lineText = lineText.Substring(0, ann).Trim();
+                    }
+                    else if (finish > 0)
+                    {
+                        lineText = lineText.Substring(0, finish).Trim();
+                    }
+                    else
+                    {
+                        lineText = lineText.Replace("\r\n", " ").Trim();
+                    }
+
+
+                    var allData = new List<string>();
+                    var stringStr = string.Empty;
+                   // var allDataLen = 0;
+                    if (stringIndex > 0)
+                    {
+                        stringStr = lineText.Substring(stringIndex, last - stringIndex+1);
+                        lineText = lineText.Substring(0, stringIndex - 1);
+                    }
+               
+                    var para = lineText.Split(' ');
+                    Array.ForEach(para, p =>
+                    {
+                        if (!string.IsNullOrEmpty(p) && p != "\t")
+                        {
+                            allData.Add(p);
+                        }
                     });
-                    if (!lineText.StartsWith("//") && !string.IsNullOrEmpty(lineText))//代表数据行
+                    cmd = allData[0].Trim().Replace('.', '_');
+
+                    if (allData.Count > 1) //有数据产生
                     {
-                        var finish = lineText.IndexOf(";");
-                        var ann = lineText.IndexOf("//");
-                        if (finish > ann && finish > 0 && ann > 0)
+                        if (cmd.Contains("driver_register_read"))
                         {
-                            lineText = lineText.Substring(0, ann).Trim();
+                            cmd = "ssd_read";
                         }
-                        else if (finish < ann && finish > 0 && ann > 0)
+                        else if (cmd.Contains("driver_register_write"))
                         {
-                            lineText = lineText.Substring(0, finish).Trim();
+                            cmd = "ssd_write";
                         }
-                        else if (ann > 0)
+                        else if (cmd.Contains("mipi_pll"))
                         {
-                            lineText = lineText.Substring(0, ann).Trim();
+                            cmd = "ssd_pll";
                         }
-                        else if (finish > 0)
+                        else if (cmd.Contains("mipi_order"))
                         {
-                            lineText = lineText.Substring(0, finish).Trim();
+                            cmd = "ssd_write";
+                        }
+                        else if (cmd.Contains("mipi_interface"))
+                        {
+                            cmd = "ssd_write";
+                        }
+                        else if (cmd.Contains("mipi_dsi"))
+                        {
+                            cmd = "ssd_write";
+                        }
+                        else if (cmd.Contains("driver_power"))
+                        {
+                            cmd = "ssd_powermode";
+                        }
+
+
+                        _algMap.TryGetValue(cmd, out AlgCmd val);
+                        if (val == null)
+                        {
+                            tmp.AddRange(SpecialData(lineText));
                         }
                         else
                         {
-                            lineText = lineText.Replace("\r\n"," ").Trim();
-                        }
-
-                        var allData = new List<string>();
-                        var para = lineText.Split(' ');
-                        Array.ForEach(para, p =>
-                        {
-                            if (!string.IsNullOrEmpty(p) && p != "\t")
+                            tmp.AddRange(ProgrammeUtil.ParserCmdHL(val.CmdData));
+                            var tmpValue = 0;
+                            for (int i = 1; i < allData.Count; i++)
                             {
-                                allData.Add(p);
-                            }
-                        });
-                        var cmd = allData[0].Trim().Replace('.', '_');
+                                var match = rgx.Match(allData[i]);
+                                var number = numberRegx.Match(allData[i]);
+                                var percent = percentage.Match(allData[i]);
+                                var k = kNum.Match(allData[i]);
+                                var param = strParam.Match(allData[i]);
+                                var bit = strBit.Match(allData[i]);
 
-                        if (allData.Count > 1)//有数据产生
-                        {
-                            var isSpecialCmd = false;
-                            if (cmd.Contains("mipi_timing") || cmd.Contains("fpga_timing"))
-                            {
-                                isSpecialCmd = true;
-                            }
+                                if (match.Success) //hex
+                                {
+                                    var str = match.Groups;
 
-                            if (!isSpecialCmd)
-                            {
-                                if (cmd.Contains("driver_register_read"))
-                                {
-                                    cmd = "ssd_read";
-                                }
-                                else if (cmd.Contains("fpga_register_read"))
-                                {
-                                    cmd = "fpga_read";
-                                }
-                                else if (cmd.Contains("fpga_register_write"))
-                                {
-                                    cmd = "fpga_timing";
-                                }
-                                else if (cmd.Contains("driver_register_write"))
-                                {
-                                    cmd = "ssd_write";
-                                }
-                                else if (cmd.Contains("driver_pll"))
-                                {
-                                    cmd = "ssd_pll";
-                                }
-                                else if (cmd.Contains("mipi_order"))
-                                {
-                                    cmd = "ssd_write";
-                                }
-                                else if (cmd.Contains("mipi_interface"))
-                                {
-                                    cmd = "ssd_write";
-                                }
-                                else if (cmd.Contains("mipi_dsi"))
-                                {
-                                    cmd = "ssd_write";
-                                }
-                                else if (cmd.Contains("driver"))
-                                {
-                                    cmd = "ssd_powermode";
-                                }
-
-
-                                _algMap.TryGetValue(cmd, out AlgCmd val);
-                                if (val == null)
-                                {
-                                    tmp.AddRange(SpecialData(lineText));
-                                }
-                                else
-                                {
-                                    tmp.AddRange(ProgrammeUtil.ParserCmdHL(val.CmdData));
-                                    var tmpValue = 0;
-                                    for (int i = 1; i < allData.Count; i++)
+                                    if (str[2].Value.Length < 4)
                                     {
-                                        var match = rgx.Match(allData[i]);
-                                        var number = numberRegx.Match(allData[i]);
-                                        var percent = percentage.Match(allData[i]);
-                                        var k = kNum.Match(allData[i]);
-                                        var param = strParam.Match(allData[i]);
-                                        var bit = strBit.Match(allData[i]);
+                                        var num = int.Parse(str[2].Value,
+                                            System.Globalization.NumberStyles.AllowHexSpecifier);
+                                        tmp.Add((byte) num);
+                                    }
+                                    else
+                                    {
+                                        var num = int.Parse(str[2].Value,
+                                            System.Globalization.NumberStyles.AllowHexSpecifier);
+                                        tmp.AddRange(ProgrammeUtil.ParserDataLH(num));
+                                    }
+                                }
+                                else if (allData[i].ToUpper().Contains("ch1ch2ch3ch4")) //ch1ch2ch3ch4
+                                {
+                                    tmp.AddRange(
+                                        ProgrammeUtil.ParserDataLH(int.Parse(allData[i].LastOrDefault()
+                                            .ToString())));
+                                }
+                                else if (percent.Success)
+                                {
+                                    var str = number.Groups;
+                                    int.TryParse(str[0].Value, out int num);
 
-                                        if (match.Success)//hex
+                                    if (cmd.Contains("pwm"))
+                                    {
+                                        var pwmV = (tmpValue * num) / 100;
+                                        tmp.AddRange(ProgrammeUtil.ParserDataLH(pwmV));
+                                    }
+                                }
+                                else if (k.Success)
+                                {
+                                    var str = number.Groups;
+                                    int.TryParse(str[0].Value, out int num);
+                                    if (cmd.Contains("pwm"))
+                                    {
+                                        var pwmV = 1000 / num;
+                                        tmpValue = pwmV;
+                                        tmp.AddRange(ProgrammeUtil.ParserDataLH(pwmV));
+                                    }
+                                }
+                                else if (number.Success && !param.Success && !bit.Success) //number
+                                {
+                                    var str = number.Groups;
+                                    int.TryParse(str[0].Value, out int num);
+                                    if (num > byte.MaxValue)
+                                    {
+                                        tmp.AddRange(ProgrammeUtil.ParserDataLH(num));
+                                    }
+                                    else
+                                    {
+                                        if (cmd.Contains("delay_s"))
                                         {
-                                            var str = match.Groups;
-
-
-                                            if (str[2].Value.Length < 4)
-                                            {
-                                                var num = int.Parse(str[2].Value, System.Globalization.NumberStyles.AllowHexSpecifier);
-                                                tmp.Add((byte)num);
-                                            }
-                                            else
-                                            {
-                                                var num = int.Parse(str[2].Value, System.Globalization.NumberStyles.AllowHexSpecifier);
-                                                tmp.AddRange(ProgrammeUtil.ParserDataLH(num));
-                                            }
+                                            tmp.AddRange(ProgrammeUtil.ParserDataLH(num));
                                         }
-                                        else if (allData[i].StartsWith("\"") && allData[i].EndsWith("\""))//string
+                                        else if (cmd.Contains("delay_ms"))
                                         {
-                                            tmp.AddRange(ProgrammeUtil.StringToByteArray(allData[i]));
+                                            tmp.AddRange(ProgrammeUtil.ParserDataLH(num));
                                         }
-                                        else if (allData[i].ToUpper().Contains("ch1ch2ch3ch4"))//ch1ch2ch3ch4
+                                        else if (cmd.Contains("delay_us"))
                                         {
-                                            tmp.AddRange(ProgrammeUtil.ParserDataLH(int.Parse(allData[i].LastOrDefault().ToString())));
+                                            tmp.AddRange(ProgrammeUtil.ParserDataLH(num));
                                         }
-                                        else if (percent.Success)
+                                        else
                                         {
-                                            var str = number.Groups;
-                                            int.TryParse(str[0].Value, out int num);
-
-                                            if (cmd.Contains("pwm"))
-                                            {
-                                                var pwmV = (tmpValue * num) / 100;
-                                                tmp.AddRange(ProgrammeUtil.ParserDataLH(pwmV));
-                                            }
-                                        }
-                                        else if (k.Success)
-                                        {
-                                            var str = number.Groups;
-                                            int.TryParse(str[0].Value, out int num);
-                                            if (cmd.Contains("pwm"))
-                                            {
-                                                var pwmV = 1000 / num;
-                                                tmpValue = pwmV;
-                                                tmp.AddRange(ProgrammeUtil.ParserDataLH(pwmV));
-                                            }
-                                        }
-                                        else if (number.Success && !param.Success && !bit.Success)//number
-                                        {
-                                            var str = number.Groups;
-                                            int.TryParse(str[0].Value, out int num);
-                                            if (num > byte.MaxValue)
-                                            {
-                                                if (cmd.Contains("ssd_pll"))
-                                                {
-
-                                                    tmp.Add((byte)(num / 5));
-                                                    tmp.Add(0xc5);
-                                                    tmp.AddRange(ProgrammeUtil.ParserDataLH(9));
-                                                }
-                                                //else if (cmd.Contains("pwm"))
-                                                //{
-                                                //    var pwmV = (tmpValue * num) / 100;
-                                                //    tmp.AddRange(ProgrammeUtil.ParserDataLH(pwmV));
-                                                //}
-                                                else
-                                                {
-                                                    tmp.AddRange(ProgrammeUtil.ParserDataLH(num));
-                                                }
-                                            }
-                                            else
-                                            {
-                                                if (cmd.Contains("delay_ms"))
-                                                {
-                                                    tmp.AddRange(ProgrammeUtil.ParserDataLH(num));
-                                                }
-                                                else if (cmd.Contains("delay_ms"))
-                                                {
-                                                    tmp.AddRange(ProgrammeUtil.ParserDataLH(num));
-                                                }
-                                                else if (cmd.Contains("delay_ms"))
-                                                {
-                                                    tmp.AddRange(ProgrammeUtil.ParserDataLH(num));
-                                                }
-                                                else
-                                                {
-                                                    tmp.Add((byte)num);
-                                                }
-
-                                            }
-                                        }
-                                        else if (allData[i].ToUpper().Contains("RGB"))//bgr
-                                        {
-                                            tmp.AddRange(ProgrammeUtil.ParserDataLH(0x00d6));
-                                            tmp.AddRange(ProgrammeUtil.ParserDataLH(0x01fd));
-                                            tmp.AddRange(ProgrammeUtil.ParserDataLH(0x1000));
-                                        }
-                                        else if (allData[i].ToUpper().Contains("BGR"))//rgb
-                                        {
-                                            tmp.AddRange(ProgrammeUtil.ParserDataLH(0x00d6));
-                                            tmp.AddRange(ProgrammeUtil.ParserDataLH(0x01fc));
-                                            tmp.AddRange(ProgrammeUtil.ParserDataLH(0x1000));
-                                        }
-                                        else if (param.Success)//lane
-                                        {
-                                            var datas = allData[i];
-                                            tmp.AddRange(ProgrammeUtil.ParserDataLH(0x00de));
-                                            if ("1lane".Contains(allData[i]))
-                                            {
-                                                tmp.AddRange(ProgrammeUtil.ParserDataLH(tmpValue & 0xfff0));
-                                            }
-                                            else if ("2lane".Contains(allData[i]))
-                                            {
-                                                tmp.AddRange(ProgrammeUtil.ParserDataLH(tmpValue & 0xfff3));
-                                            }
-                                            else if ("3lane".Contains(allData[i]))
-                                            {
-                                                tmp.AddRange(ProgrammeUtil.ParserDataLH(tmpValue & 0xfffa));
-                                            }
-                                            else if ("4lane".Contains(allData[i]))
-                                            {
-                                                tmp.AddRange(ProgrammeUtil.ParserDataLH(tmpValue & 0xffff));
-                                            }
-                                            tmp.Add(0);
-                                            tmp.Add(0);
-                                        }
-                                        else if (bit.Success)//bit
-                                        {
-                                            var datas = allData[i];
-                                            tmp.AddRange(ProgrammeUtil.ParserDataLH(0x00b6));
-                                            if ("16bit".Contains(allData[i]))
-                                            {
-                                                tmp.AddRange(ProgrammeUtil.ParserDataLH(tmpValue & 0xfffc));
-                                            }
-                                            else if ("18bit".Contains(allData[i]))
-                                            {
-                                                tmp.AddRange(ProgrammeUtil.ParserDataLH(tmpValue & 0xfffd));
-                                            }
-                                            else if ("24bit".Contains(allData[i]))
-                                            {
-                                                tmp.AddRange(ProgrammeUtil.ParserDataLH(tmpValue & 0xffff));
-                                            }
-                                            tmp.AddRange(ProgrammeUtil.ParserDataLH(2));
-                                        }
-                                        else if (allData[i].ToUpper().Contains("SINGLEMODE"))//enable
-                                        {
-                                            tmpValue = 0x002f;
-                                        }
-                                        else if (allData[i].ToUpper().Contains("DUALMODE"))//enable
-                                        {
-                                            tmpValue = 0x003f;
-                                        }
-                                        else if (allData[i].ToUpper().Contains("ENABLE"))//enable
-                                        {
-                                            tmp.Add(1);
-                                        }
-                                        else if (allData[i].ToUpper().Contains("DISABLE"))//disable
-                                        {
-                                            tmp.Add(0);
-                                        }
-                                        else if (allData[i].ToUpper().Contains("COLORBAR"))//colorbar
-                                        {
-                                            tmp.Add(0x10);
-                                        }
-                                        else if (allData[i].ToUpper().Contains("SIGLECOLOR"))//colorbar
-                                        {
-                                            tmp.Add(0x00);
-                                        }
-                                        else if (allData[i].ToUpper().Contains("OE"))//colorbar
-                                        {
-                                            tmpValue = 0xf02f;
-                                        }
-                                        else if (allData[i].ToUpper().Contains("LR"))//colorbar
-                                        {
-                                            tmpValue = 0xf42f;
-                                        }
-                                        else if (allData[i].ToUpper().Contains("BD"))//colorbar
-                                        {
-                                            tmpValue = 0xf82f;
-                                        }
-                                        else if (allData[i].ToUpper().Contains("NONBURSTPULSES"))//colorbar
-                                        {
-                                            tmpValue = tmpValue & 0xfff3;
-                                        }
-                                        else if (allData[i].ToUpper().Contains("NONBURSTEVENTS"))//colorbar
-                                        {
-                                            tmpValue = tmpValue & 0xfff7;
-                                        }
-                                        else if (allData[i].ToUpper().Contains("BURSTMODE"))//colorbar
-                                        {
-                                            tmpValue = tmpValue & 0xfffb;
-                                        }
-                                        else if (allData[i].ToUpper().Contains("POWERDOWN"))
-                                        {
-                                            tmp.Add(0);
+                                            tmp.AddRange(ProgrammeUtil.ParserDataLH(num));
                                         }
                                     }
                                 }
-                            }
-                            else
-                            {
-                                if (cmd.Contains("mipi_timing"))
+                                else if (allData[i].ToUpper().Contains("RGB")) //bgr
                                 {
-                                    cmd = "ssd_write";
-                                    _algMap.TryGetValue(cmd, out AlgCmd val);
-                                    if (val != null)
+                                    tmp.AddRange(ProgrammeUtil.ParserDataLH(0x00d6));
+                                    tmp.AddRange(ProgrammeUtil.ParserDataLH(0x01fd));
+                                    tmp.AddRange(ProgrammeUtil.ParserDataLH(0x1000));
+                                }
+                                else if (allData[i].ToUpper().Contains("BGR")) //rgb
+                                {
+                                    tmp.AddRange(ProgrammeUtil.ParserDataLH(0x00d6));
+                                    tmp.AddRange(ProgrammeUtil.ParserDataLH(0x01fc));
+                                    tmp.AddRange(ProgrammeUtil.ParserDataLH(0x1000));
+                                }
+                                else if (param.Success) //lane
+                                {
+                                    var datas = allData[i];
+                                    tmp.AddRange(ProgrammeUtil.ParserDataLH(0x00de));
+                                    if ("1lane".Contains(allData[i]))
                                     {
-                                        //vact,hact,vbp,hbp,vfp,hfp,vsa,has
-                                        var vact = int.Parse(allData[1]);
-                                        var hact = int.Parse(allData[2]);
-                                        var vbp = int.Parse(allData[3]);
-                                        var vfp = int.Parse(allData[4]);
-                                        var hbp = int.Parse(allData[5]);
-                                        var hfp = int.Parse(allData[6]);
-                                        var vsa = int.Parse(allData[7]);
-                                        var hsa = int.Parse(allData[8]);
-                                        tmp.AddRange(ProgrammeUtil.ParserCmdHL(val.CmdData));
-                                        tmp.AddRange(ProgrammeUtil.ParserDataLH(0xb1));
-                                        tmp.Add((byte)vsa);
-                                        tmp.Add((byte)hsa);
-                                        tmp.Add(0);
-                                        tmp.Add(0);
-                                        curData.Add((byte)tmp.Count);
-                                        curData.AddRange(tmp);
-                                        data.Add(curData.ToArray());
-                                        tmp.Clear();
-                                        curData.Clear();
-                                        tmp.AddRange(ProgrammeUtil.ParserCmdHL(val.CmdData));
-                                        tmp.AddRange(ProgrammeUtil.ParserDataLH(0xb2));
-                                        tmp.Add((byte)hbp);
-                                        tmp.Add((byte)vbp);
-                                        tmp.Add((byte)((hbp & 0xff00) >> 8));
-                                        tmp.Add((byte)((vbp & 0xff00) >> 8));
-                                        curData.Add((byte)tmp.Count);
-                                        curData.AddRange(tmp);
-                                        data.Add(curData.ToArray());
-                                        tmp.Clear();
-                                        curData.Clear();
-                                        tmp.AddRange(ProgrammeUtil.ParserCmdHL(val.CmdData));
-                                        tmp.AddRange(ProgrammeUtil.ParserDataLH(0xb3));
-                                        tmp.Add((byte)hfp);
-                                        tmp.Add((byte)vfp);
-                                        tmp.Add((byte)((hfp & 0xff00) >> 8));
-                                        tmp.Add((byte)((vfp & 0xff00) >> 8));
-                                        curData.Add((byte)tmp.Count);
-                                        curData.AddRange(tmp);
-                                        data.Add(curData.ToArray());
-                                        tmp.Clear();
-                                        curData.Clear();
-                                        tmp.AddRange(ProgrammeUtil.ParserCmdHL(val.CmdData));
-                                        tmp.AddRange(ProgrammeUtil.ParserDataLH(0xb4));
-                                        tmp.AddRange(ProgrammeUtil.ParserDataLH(hact));
-                                        tmp.AddRange(ProgrammeUtil.ParserDataLH(0));
-                                        curData.Add((byte)tmp.Count);
-                                        curData.AddRange(tmp);
-                                        data.Add(curData.ToArray());
-                                        tmp.Clear();
-                                        curData.Clear();
-                                        tmp.AddRange(ProgrammeUtil.ParserCmdHL(val.CmdData));
-                                        tmp.AddRange(ProgrammeUtil.ParserDataLH(0xb5));
-                                        tmp.AddRange(ProgrammeUtil.ParserDataLH(vact));
-                                        tmp.AddRange(ProgrammeUtil.ParserDataLH(0));
-                                        curData.Add((byte)tmp.Count);
-                                        curData.AddRange(tmp);
-                                        data.Add(curData.ToArray());
-                                        tmp.Clear();
-                                        curData.Clear();
+                                        tmp.AddRange(ProgrammeUtil.ParserDataLH(tmpValue & 0xfff0));
+                                    }
+                                    else if ("2lane".Contains(allData[i]))
+                                    {
+                                        tmp.AddRange(ProgrammeUtil.ParserDataLH(tmpValue & 0xfff3));
+                                    }
+                                    else if ("3lane".Contains(allData[i]))
+                                    {
+                                        tmp.AddRange(ProgrammeUtil.ParserDataLH(tmpValue & 0xfffa));
+                                    }
+                                    else if ("4lane".Contains(allData[i]))
+                                    {
+                                        tmp.AddRange(ProgrammeUtil.ParserDataLH(tmpValue & 0xffff));
+                                    }
 
-                                    }
+                                    tmp.Add(0);
+                                    tmp.Add(0);
                                 }
-                                else if (cmd.Contains("fpga_timing"))
+                                else if (bit.Success) //bit
                                 {
-                                    _algMap.TryGetValue(cmd, out AlgCmd val);
-                                    if (val != null)
+                                    var datas = allData[i];
+                                    tmp.AddRange(ProgrammeUtil.ParserDataLH(0x00b6));
+                                    if ("16bit".Contains(allData[i]))
                                     {
-                                        var vact = int.Parse(allData[1]);
-                                        var hact = int.Parse(allData[2]);
-                                        var vbp = int.Parse(allData[3]);
-                                        var vfp = int.Parse(allData[4]);
-                                        var hbp = int.Parse(allData[5]);
-                                        var hfp = int.Parse(allData[6]);
-                                        var vsa = int.Parse(allData[7]);
-                                        var hsa = int.Parse(allData[8]);
-                                        Action<byte, int> action = (a, p) =>
-                                        {
-                                            tmp.AddRange(ProgrammeUtil.ParserCmdHL(val.CmdData));
-                                            tmp.AddRange(ProgrammeUtil.ParserDataLH(a));
-                                            tmp.AddRange(ProgrammeUtil.ParserDataLH(p));
-                                            curData.Add((byte)tmp.Count);
-                                            curData.AddRange(tmp);
-                                            data.Add(curData.ToArray());
-                                            tmp.Clear();
-                                            curData.Clear();
-                                        };
-                                        action(0xb0, vact);
-                                        action(0xb2, vsa);
-                                        action(0xb4, vbp);
-                                        action(0xb6, vfp);
-                                        action(0xb8, hact);
-                                        action(0xba, hsa);
-                                        action(0xbc, hfp);
-                                        action(0xbe, hbp);
+                                        tmp.AddRange(ProgrammeUtil.ParserDataLH(tmpValue & 0xfffc));
                                     }
+                                    else if ("18bit".Contains(allData[i]))
+                                    {
+                                        tmp.AddRange(ProgrammeUtil.ParserDataLH(tmpValue & 0xfffd));
+                                    }
+                                    else if ("24bit".Contains(allData[i]))
+                                    {
+                                        tmp.AddRange(ProgrammeUtil.ParserDataLH(tmpValue & 0xffff));
+                                    }
+
+                                    tmp.AddRange(ProgrammeUtil.ParserDataLH(2));
                                 }
+                                else if (allData[i].ToUpper().Contains("SINGLEMODE")) //enable
+                                {
+                                    tmpValue = 0x0023;
+                                }
+                                else if (allData[i].ToUpper().Contains("DUALMODE")) //enable
+                                {
+                                    tmpValue = 0x003f;
+                                }
+                                else if (allData[i].ToUpper().Contains("EXTERNAL")) //enable
+                                {
+                                    tmp.Add(2);
+                                }
+                                else if (allData[i].ToUpper().Contains("ENABLE")) //enable
+                                {
+                                    tmp.Add(1);
+                                }
+                                else if (allData[i].ToUpper().Contains("DISABLE")) //disable
+                                {
+                                    tmp.Add(0);
+                                }
+                                else if (allData[i].ToUpper().Contains("COLORBAR")) //colorbar
+                                {
+                                    tmp.Add(0x10);
+                                }
+                                else if (allData[i].ToUpper().Contains("SIGLECOLOR")) //colorbar
+                                {
+                                    tmp.Add(0x00);
+                                }
+                                else if (allData[i].ToUpper().Contains("OE")) //colorbar
+                                {
+                                    tmpValue = 0x102f;
+                                }
+                                else if (allData[i].ToUpper().Contains("LR")) //colorbar
+                                {
+                                    tmpValue = 0x142f;
+                                }
+                                else if (allData[i].ToUpper().Contains("BD")) //colorbar
+                                {
+                                    tmpValue = 0x182f;
+                                }
+                                else if (allData[i].ToUpper().Contains("NONBURSTPULSES")) //colorbar
+                                {
+                                    tmpValue = tmpValue & 0xfff3;
+                                }
+                                else if (allData[i].ToUpper().Contains("NONBURSTEVENTS")) //colorbar
+                                {
+                                    tmpValue = tmpValue & 0xfff7;
+                                }
+                                else if (allData[i].ToUpper().Contains("BURSTMODE")) //colorbar
+                                {
+                                    tmpValue = tmpValue & 0xfffb;
+                                }
+                                else if (allData[i].ToUpper().Contains("DOWN"))
+                                {
+                                    tmp.Add(0);
+                                }
+                                else if (allData[i].ToUpper().Contains("ALL"))
+                                {
+                                    tmp.Add(0);
+                                }
+                                else if (allData[i].ToUpper().Contains("USART"))
+                                {
+                                    tmp.Add(1);
+                                }
+                                else if (allData[i].ToUpper().Contains("DEBUG"))
+                                {
+                                    tmp.Add(2);
+                                }
+                                else if (allData[i].ToUpper().Contains("ETH"))
+                                {
+                                    tmp.Add(3);
+                                }
+                                else if (allData[i].ToUpper().Contains("USB"))
+                                {
+                                    tmp.Add(4);
+                                }
+                                else if (allData[i].ToUpper().Contains("CPHY"))
+                                {
+                                    tmp.Add(0);
+                                }
+                                else if (allData[i].ToUpper().Contains("DPHY"))
+                                {
+                                    tmp.Add(1);
+                                }
+                                
                             }
                         }
-                        else//无数据产生
-                        {
-                            _algMap.TryGetValue(cmd, out AlgCmd val);
-                            if (val != null)
-                            {
-                                tmp.AddRange(ProgrammeUtil.ParserCmdHL(val.CmdData));
-                            }
-                            else
-                            {
-                                tmp.AddRange(SpecialData(cmd));
 
-                            }
-                        }
                     }
-                    else if (string.IsNullOrEmpty(lineText))//空行
+                    else //无数据产生
                     {
-                        var cmd = "next_line";
                         _algMap.TryGetValue(cmd, out AlgCmd val);
                         if (val != null)
                         {
@@ -482,50 +370,89 @@ namespace TspUtil
                         }
                         else
                         {
-                            App.Locator.Main.AddLogMsg("未查找到该命令");
+                            tmp.AddRange(SpecialData(cmd));
+
                         }
                     }
-                    else if (lineText.StartsWith("//"))//注释行
+
+                    if (stringStr.StartsWith("\"") && stringStr.EndsWith("\"")) //string
                     {
-                        var cmd = "comment";
-                        _algMap.TryGetValue(cmd, out AlgCmd val);
-                        if (val != null)
+                        var str = stringStr.Substring(1, stringStr.LastIndexOf('\"') - 1);
+                        var index = 0;
+                        if (str.Contains("\\r\\n"))
                         {
-                            tmp.AddRange(ProgrammeUtil.ParserCmdHL(val.CmdData));
-                            tmp.AddRange(ProgrammeUtil.StringToByteArray(lineText));
+                            index = str.LastIndexOf("\\r\\n");
+                            str = str.Substring(0, index);
+                            tmp.AddRange(ProgrammeUtil.StringToByteArray(str));
+                            tmp.Add(0x0d);
+                            tmp.Add(0x0a);
+                        }
+                        else if (str.Contains("\\n"))
+                        {
+                            index = str.LastIndexOf("\\r");
+                            str = str.Substring(0, index);
+                            tmp.AddRange(ProgrammeUtil.StringToByteArray(str));
+                            tmp.Add(0x0d);
+                        }
+                        else if (str.Contains("\\r"))
+                        {
+                            index = str.LastIndexOf("\\n");
+                            str = str.Substring(0, index);
+                            tmp.AddRange(ProgrammeUtil.StringToByteArray(str));
+                            tmp.Add(0x0a);
                         }
                         else
                         {
-                            App.Locator.Main.AddLogMsg("未查找到该命令");
+                            tmp.AddRange(ProgrammeUtil.StringToByteArray(str));
                         }
+                        stringStr = String.Empty;
                     }
-                    curData.Add((byte)tmp.Count);
-                    curData.AddRange(tmp);
-                    if (curData.Any())
-                    {
-                        data.Add(curData.ToArray());
-                    }
-
                 }
-                catch (Exception ex)
+                else if (string.IsNullOrEmpty(lineText)|| lineText == "\r\n") //空行
                 {
-                    App.Locator.Main.AddLogMsg($"文件:{_curProgmFile},第{line.LineNumber}行， 产生错误：{ex.Message}");
+                    cmd = "next_line";
+                    _algMap.TryGetValue(cmd, out AlgCmd val);
+                    if (val != null)
+                    {
+                        tmp.AddRange(ProgrammeUtil.ParserCmdHL(val.CmdData));
+                    }
+                    else
+                    {
+                        App.Locator.Main.AddLogMsg("未查找到该命令");
+                    }
                 }
+                else if (lineText.StartsWith("//")) //注释行
+                {
+                    cmd = "comment";
+                    _algMap.TryGetValue(cmd, out AlgCmd val);
+                    if (val != null)
+                    {
+                        tmp.AddRange(ProgrammeUtil.ParserCmdHL(val.CmdData));
+                        tmp.AddRange(ProgrammeUtil.StringToByteArray(lineText));
+                    }
+                    else
+                    {
+                        App.Locator.Main.AddLogMsg("未查找到该命令");
+                    }
+                }
+               
+
+                curData.Add((byte) tmp.Count);
+                curData.AddRange(tmp);
+                if (curData.Any())
+                {
+                    data.Add(curData.ToArray());
+                }
+
             }
-            else
+            catch (Exception ex)
             {
-                return null;
+                App.Locator.Main.AddLogMsg($"文件:{_curProgmFile},第{lineNum}行，命令为：{cmd}， 产生错误：{ex.Message}");
             }
-            //
-            //发送
-            //var lineResult = new List<byte[]>();
-            //foreach (var val in data)
-            //{
-            //    var lineStr = lineNumber.ToString("000");
-            //    lineResult.Add(ProgrammeUtil.ParseCmd("RU", "0", $"{lineStr}", val.ToArray()));
-            //}
+
             return data;
         }
+
         private byte[] SpecialData(string cmd)
         {
             var lst = new List<byte>();
@@ -556,15 +483,19 @@ namespace TspUtil
             List<byte> lastLst = new List<byte>();//最后一行的结束命令
             List<byte> zeroLine = new List<byte>();//第一行的checksum和文件名，约定为{。。。。|长度 命令 命令 32bit的checksum 文件名}
             var lineResult = new List<byte[]>();
-            _edit = App.Locator.TextModal.CurFileEdit(fname);
+            _editContent = App.Locator.TextModal.CurFileEdit(fname);
             _algMap = App.Locator.Main.AlgMap;
-            if (_edit != null)
+            if (_editContent != null)
             {
-                foreach (var line in _edit.Document.Lines)
+                Application.Current.Dispatcher.Invoke(() =>
                 {
-                    var oneLine = CompileLine(line, line.LineNumber);
-                    contentAndLast.AddRange(oneLine);
-                }
+                    foreach (var line in _editContent.Editor.Lines)
+                    {
+                        var oneLine = CompileLine(line.Text, _editContent.Editor.CurrentLine);
+                        contentAndLast.AddRange(oneLine);
+                    }
+                });
+               
 
                 _algMap.TryGetValue("file_end", out AlgCmd end);
                 tmp.AddRange(ProgrammeUtil.ParserCmdHL(end.CmdData));
@@ -621,6 +552,7 @@ namespace TspUtil
                     file.FileIndex = index;
                     index++;
                     file.Cs = string.Join("",Array.ConvertAll(checkSum, input => $"{input:X2}"));
+                    App.Locator.KeyBind.ParamLst.Add(new KeyBindParam($"File_{index}_{file.Des}",$"0x000{index}"));
                 }
             }
             return allFilesLines;

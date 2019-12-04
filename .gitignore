@@ -6,3 +6,10 @@
 /tmpdata
 /RequireMent
 /workDirectory
+/Dlls
+/exe
+/exed
+/packages
+/TspUtil/obj
+/.vs/TspUtil/v15/Server/sqlite3
+/.vs/TspUtil/v15

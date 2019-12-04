@@ -12,47 +12,31 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Xml;
 using GalaSoft.MvvmLight;
-using ICSharpCode.AvalonEdit;
-using ICSharpCode.AvalonEdit.CodeCompletion;
-using ICSharpCode.AvalonEdit.Document;
-using ICSharpCode.AvalonEdit.Highlighting;
-using ICSharpCode.AvalonEdit.Highlighting.Xshd;
-using ICSharpCode.AvalonEdit.Rendering;
 using log4net;
+using ScintillaNET;
 using Xceed.Wpf.AvalonDock.Layout;
+using Color = System.Drawing.Color;
+using Style = ScintillaNET.Style;
 
 namespace TspUtil.ViewModel
 {
     public class TextEitorModal:ViewModelBase
     {
        
-        private TextMarkerServices _text;
+       // private TextMarkerServices _text;
         private ToolTip _toolTip;
         private string _fileName = string.Empty;
-        private TextEditor _editor;
-        private IHighlightingDefinition _xshd;
+        private Scintilla _editor;
+        private int _maxLineNumberCharLength;
+      //  private IHighlightingDefinition _xshd;
         private ScrollViewer _break;
-        private TextView _textView;
-        private ListBox listB;
-        private ObservableCollection<LineBreakPoint> _breakPoints;
+        //private TextView _textView;
+        private ListBox _listB;
+       // private ObservableCollection<LineBreakPoint> _breakPoints;
         private string _headerName = string.Empty;
         private readonly static ILog _log = LogManager.GetLogger("exlog");
         private List<EditorContent> _allFileEditor;
-
-        public TextEditor Editor
-        {
-            get => _editor;
-        }
-
-        public TextMarkerServices Text
-        {
-            get => _text;
-            set => _text = value;
-        }
-        public ObservableCollection<LineBreakPoint> BreakPoints
-        {
-            get => _breakPoints ?? (_breakPoints = new ObservableCollection<LineBreakPoint>());
-        }
+        private double _lineHeight;
 
         public string HeaderName
         {
@@ -71,39 +55,114 @@ namespace TspUtil.ViewModel
             get { return _allFileEditor??(_allFileEditor=new List<EditorContent>()); }
         }
 
-        public AlgProgmFiles ProgrammeLine(string curFilePath, Dictionary<string, AlgCmd> algMap,out IList<DocumentLine> edLines)
+        public Scintilla Editor
         {
-            AlgProgmFiles apf = null;
-            edLines = null;
-            if (curFilePath != null && algMap!=null)
-            {
-                foreach (var editorContent in AllFileEditor)
-                {
-                    if (editorContent.FilePath == curFilePath)
-                    {
-                        IList<DocumentLine> tmp = null;
-                        Application.Current.Dispatcher?.Invoke(() =>
-                        {
-                            tmp = editorContent.Editor.Document.Lines; 
-
-                        });
-                        edLines = tmp;
-                        apf = new AlgProgmFiles(curFilePath, editorContent.Editor, algMap);
-                        break;
-                    }
-                }
-            }
-            return apf;
+            get { return _editor; }
+            set { _editor = value; }
         }
 
-        public TextEditor CurFileEdit(string fname)
+        //private void InitSyntaxColoring()
+        //{
+        //    Editor.StyleResetDefault();
+        //    Editor.Styles[ScintillaNET.Style.Default].Font = "Consolas";
+        //    Editor.Styles[ScintillaNET.Style.Default].Size = 10;
+        //    Editor.StyleClearAll();
+
+        //    Editor.Styles[CustomLexer.StyleDefault].ForeColor = System.Drawing.Color.Black;
+        //    Editor.Styles[CustomLexer.StyleKeyword].ForeColor = System.Drawing.Color.Orange;
+        //    Editor.Styles[CustomLexer.StyleIdentifier].ForeColor = System.Drawing.Color.Teal;
+        //    Editor.Styles[CustomLexer.StyleNumber].ForeColor = System.Drawing.Color.Purple;
+        //    Editor.Styles[CustomLexer.StyleString].ForeColor = System.Drawing.Color.Red;
+        //    Editor.Styles[CustomLexer.StyleComment].ForeColor = System.Drawing.Color.Green;
+
+        //    Editor.Lexer = Lexer.Container;
+        //}
+        private static string regexStr = "mipi lr oe data cycle dsc dsi power down pwm driver video write read power on reset gpio ms s us delay pll external print debug usart all usb eth cphy dphy pclk mode lane timing enable disable colorbar nonburstevents nonburstPulses interface dualMode singleMode register order rgb bgr ch show image color off";
+
+        private void InitSyntaxColoring()
         {
-            TextEditor edit = null;
+            // Configuring the default style with properties
+            // we have common to every lexer style saves time.
+            Editor.StyleResetDefault();
+            Editor.Styles[Style.Default].Font = "Consolas";
+            Editor.Styles[Style.Default].Size = 10;
+            Editor.StyleClearAll();
+
+            // Configure the CPP (C#) lexer styles
+            Editor.Styles[Style.Cpp.Default].ForeColor = Color.Black;
+            Editor.Styles[Style.Cpp.Comment].ForeColor = System.Drawing.Color.Green;
+            Editor.Styles[Style.Cpp.CommentLine].ForeColor = System.Drawing.Color.Green;
+            Editor.Styles[Style.Cpp.CommentLineDoc].ForeColor = Color.FromArgb(128, 128, 128); // Gray
+            Editor.Styles[Style.Cpp.Number].ForeColor = System.Drawing.Color.Purple;
+            Editor.Styles[Style.Cpp.Word].ForeColor = System.Drawing.Color.Orange;
+            Editor.Styles[Style.Cpp.String].ForeColor = Color.FromArgb(163, 21, 21); // Red
+            //Editor.Styles[Style.Cpp.Character].ForeColor = Color.FromArgb(163, 21, 21); // Red
+           // Editor.Styles[Style.Cpp.Verbatim].ForeColor = Color.FromArgb(163, 21, 21); // Red
+            Editor.Styles[Style.Cpp.StringEol].BackColor = System.Drawing.Color.Red;
+            Editor.Styles[Style.Cpp.Operator].ForeColor = Color.Purple;
+         //   Editor.Styles[Style.Cpp.Preprocessor].ForeColor = Color.Maroon;
+            Editor.Lexer = Lexer.Cpp;
+
+            // Set the keywords
+            Editor.SetKeywords(0, $"{regexStr}");
+        }
+        public void ShowLineNumber()
+        {
+            // Did the number of characters in the line number display change?
+            // i.e. nnn VS nn, or nnnn VS nn, etc...
+            var length = Editor.Lines.Count.ToString().Length;
+            if (this._maxLineNumberCharLength == length)
+                return;
+
+            // Calculate the width required to display the last line number
+            // and include some padding for good measure.
+            const int padding = 25;
+            Editor.Margins[0].Width = Editor.TextWidth(ScintillaNET.Style.LineNumber, new string('9', _maxLineNumberCharLength + 1)) + padding;
+            this._maxLineNumberCharLength = length;
+        }
+
+        public void ShowCurrentLine()
+        {
+           // Editor.Margins[3].Width = Editor.TextWidth(Style.)
+        }
+        public static readonly int BOOKMARK_MARGIN = 1;
+        public static readonly int BOOKMARK_MARKER = 1;
+        private void InitBookmarkMargin()
+        {
+
+            //TextArea.SetFoldMarginColor(true, IntToColor(BACK_COLOR));
+
+            var margin = Editor.Margins[BOOKMARK_MARGIN];
+            margin.Width = 20;
+            margin.Sensitive = true;
+            margin.Type = MarginType.RightText;
+            margin.Mask = (uint)(1 << BOOKMARK_MARKER);
+            margin.Cursor = MarginCursor.Arrow;
+
+            var marker = Editor.Markers[BOOKMARK_MARKER];
+            marker.Symbol = MarkerSymbol.Circle;
+            marker.SetBackColor(System.Drawing.Color.FromArgb(0xff, 0xFF, 0x00, 0x3b));//Color.FromRgb(0xFF, 0x00,0x3b)
+            marker.SetForeColor(System.Drawing.Color.Black);//IntToColor(0x000000)
+            marker.SetAlpha(100);
+
+            //var mg = Editor.Margins[2];
+            //margin.Sensitive = true;
+            //mg.Width = 20;
+            //mg.Type = MarginType.Color;
+            //mg.Mask = 1;
+
+            //var mk = Editor.Markers[2];
+            //mk.SetBackColor(Color.Brown);
+        }
+
+        public EditorContent CurFileEdit(string fname)
+        {
+            EditorContent edit=null;
             foreach (var editorContent in AllFileEditor)
             {
-                if (editorContent.FileName == fname)
+                if (editorContent.FileName.Equals(fname))
                 {
-                    edit = editorContent.Editor;
+                    edit = editorContent;
                     break;
                 }
             }
@@ -111,29 +170,22 @@ namespace TspUtil.ViewModel
             return edit;
         }
 
-        public LayoutDocument CreateAnDocumentEditor(string text,string fileName,string filePath)
+        public LayoutDocument CreateAnDocumentEditor(string text, string fileName, string filePath,out EditorContent editor)
         {
             var view = new TextEditorTemplate();
             var doc = new LayoutDocument();
             doc.Content = view;
             doc.Title = fileName;
-            _editor.Text = text;
-            BreakPoints.Clear();
-            for (int i = 0; i < _editor.LineCount; i++)
+            Editor.Text = text;
+            editor = null;
+            if (!AllFileEditor.Exists(p => p.FileName == fileName))
             {
-                BreakPoints.Add(new LineBreakPoint($"{i + 1}"));
+                editor = new EditorContent(fileName, filePath, Editor);
+                AllFileEditor.Add(editor);
             }
-
-            if (!AllFileEditor.Exists(p=>p.FileName==fileName))
-            {
-                AllFileEditor.Add(new EditorContent(fileName, text, filePath, _editor));
-            }
-            
-            _break.Height = Editor.TextArea.TextView.DocumentHeight;
             return doc;
         }
 
-        
         public void SaveFile(string curFile=null)
         {
             foreach (var editorContent in AllFileEditor)
@@ -149,181 +201,28 @@ namespace TspUtil.ViewModel
                 }
             }
         }
-        public void InitPrograme(TextEditor editor, ScrollViewer list, ListBox lb)
+
+      
+
+        public void InitPrograme(Scintilla textEditor)
         {
-            listB = lb;
-            _break = list;
-            XshdSyntaxDefinition xssd = null;
-            _editor = editor;
-            _text = new TextMarkerServices(editor);
-            _textView = editor.TextArea.TextView;
-            _textView.BackgroundRenderers.Add(_text);
-            _textView.LineTransformers.Add(_text);
-            _textView.Services.AddService(typeof(TextMarkerServices), _text);
-           
-            try
-            {
-                using (XmlReader reader = new XmlTextReader("../CustomMode-Mode.xshd"))
-                {
-                    _xshd = HighlightingLoader.Load(reader, HighlightingManager.Instance);
-                    
-                    //var sa = new SaveXshdVisitor();
-                }
-            }
-            catch (Exception ex)
-            {
-                _log.Debug($"加载xshd配置文件失败：{ex.Message}{ex.StackTrace}");
-            }
-  
-            var setting = new XmlReaderSettings();
-            setting.ValidationType = ValidationType.Schema;
-            var xmlR = XmlReader.Create(File.Open("../CustomMode-Mode.xshd", FileMode.Open), setting);
-            xssd = HighlightingLoader.LoadXshd(xmlR);
-            var els = xssd.Elements;
-            var exs = xssd.Extensions;
-            var n = xssd.Name;
-
-
-            var str = File.Create("../Visitor.xml");
-            var wr = XmlWriter.Create(str);
-            var keys = new XshdKeywords();
-            keys.AcceptVisitor(new SaveXshdVisitor(wr));
-            var allKeys = keys.Words;
-
-
-            editor.SyntaxHighlighting = _xshd;
-            _textView.MouseHover += MouseHover;
-            //textView.MouseHoverStopped += TextEditorMouseHoverStopped;
-            _textView.VisualLinesChanged += VisualLinesChanged;
-            editor.TextArea.TextEntering += EditorEntering;
-            editor.TextArea.TextEntered += EditorEntered;
-            _textView.ScrollOffsetChanged += EditorScroll;
-
-
-            //var els = xssd.Elements;
-            //var exs = xssd.Extensions;
-            //var n = xssd.Name;
+            Editor = textEditor;
+            InitSyntaxColoring();
+            ShowLineNumber();
+            InitBookmarkMargin();
         }
-
-        CompletionWindow _completion;
-
-        void EditorEntered(object sender, TextCompositionEventArgs e)
-        {
-            if (e.Text == ".")
-            {
-                // Open code completion after the user has pressed dot:
-                _completion = new CompletionWindow(_editor.TextArea);
-                IList<ICompletionData> data = _completion.CompletionList.CompletionData;
-                data.Add(new CompletionData("Item1"));
-                data.Add(new CompletionData("Item2"));
-                data.Add(new CompletionData("Item3"));
-                _completion.Show();
-                _completion.Closed += delegate
-                {
-                    _completion = null;
-                };
-            }
-        }
-
-        void EditorScroll(object sender, EventArgs e)
-        {
-            var s = sender;
-            var t = _break.ScrollableHeight / BreakPoints.Count;
-            var ss = _break.VerticalOffset;
-            _break.ScrollToVerticalOffset(_textView.VerticalOffset - 4);
-            var he = _textView.DefaultLineHeight;
-
-            //textView.CurrentLineBackground = new SolidColorBrush(Colors.AliceBlue);
-        }
-
-        void EditorEntering(object sender, TextCompositionEventArgs e)
-        {
-            if (e.Text.Length > 0 && _completion != null)
-            {
-                if (!char.IsLetterOrDigit(e.Text[0]))
-                {
-                    // Whenever a non-letter is typed while the completion window is open,
-                    // insert the currently selected element.
-                    _completion.CompletionList.RequestInsertion(e);
-                }
-            }
-            // Do not set e.Handled=true.
-            // We still want to insert the character that was typed.
-        }
-        private void MouseHover(object sender, MouseEventArgs e)
-        {
-            var posx = e.GetPosition(_editor.TextArea.TextView) + _editor.TextArea.TextView.ScrollOffset;
-            var pos = Editor.TextArea.TextView.GetPositionFloor(posx);
-            bool inDocument = pos.HasValue;
-            if (inDocument)
-            {
-                var logicalPosition = pos.Value.Location;
-                int offset = _editor.Document.GetOffset(logicalPosition);
-
-                var markersAtOffset = _text.GetMarkersAtOffset(offset);
-                var markerWithToolTip = markersAtOffset.FirstOrDefault(marker => marker.ToolTip != null);
-
-                if (markerWithToolTip != null)
-                {
-                    if (_toolTip == null)
-                    {
-                        _toolTip = new ToolTip();
-                        _toolTip.Closed += ToolTipClosed;
-                        _toolTip.PlacementTarget = Editor;
-                        _toolTip.Content = new System.Windows.Controls.TextBlock
-                        {
-                            Text = markerWithToolTip.ToolTip,
-                            TextWrapping = TextWrapping.Wrap
-                        };
-                        _toolTip.IsOpen = true;
-                        e.Handled = true;
-                    }
-                }
-            }
-        }
-
-        void ToolTipClosed(object sender, RoutedEventArgs e)
-        {
-            _toolTip = null;
-        }
-        void TextEditorMouseHoverStopped(object sender, MouseEventArgs e)
-        {
-            if (_toolTip != null)
-            {
-                _toolTip.IsOpen = false;
-                e.Handled = true;
-            }
-        }
-        private void VisualLinesChanged(object sender, EventArgs e)
-        {
-            var view = (TextView)sender;
-            //view.LinkTextBackgroundBrush = new SolidColorBrush(Colors.LightSkyBlue);
-            //view.CurrentLineBackground=new SolidColorBrush(Colors.Red);
-            foreach (var editorContent in AllFileEditor)
-            {
-                if (editorContent.FilePath == App.Locator.Main.CurProgmFile)
-                {
-                    editorContent.SelectedLine = view.HighlightedLine;
-                    break;
-                }
-            }
-        }
-
     }
 
     public class EditorContent
     {
-        private TextEditor _editor;
+        private Scintilla _editor;
         private string _fileName;
         private string _filePath;
-        private string _textContent;
-        private int _selectedLine;
 
 
-        public EditorContent(string fileName, string textContent,string fnPath,TextEditor editor)
+        public EditorContent(string fileName,string fnPath, Scintilla editor)
         {
             _fileName = fileName;
-            _textContent = textContent;
             _filePath = fnPath;
             _editor = editor;
         }
@@ -336,29 +235,14 @@ namespace TspUtil.ViewModel
                 _fileName = value;
             }
         }
-
-        public string TextContent
-        {
-            get { return _textContent; }
-            set
-            {
-                _textContent = value;
-            }
-        }
-
-        public int SelectedLine
-        {
-            get { return _selectedLine; }
-            set { _selectedLine = value; }
-        }
-
+        
         public string FilePath
         {
             get { return _filePath; }
             set { _filePath = value; }
         }
 
-        public TextEditor Editor
+        public Scintilla Editor
         {
             get { return _editor; }
             set { _editor = value; }
@@ -366,14 +250,7 @@ namespace TspUtil.ViewModel
 
         public void Save()
         {
-            var file = File.Open(FilePath, FileMode.Open, FileAccess.ReadWrite);
-            if (file.CanWrite)
-            {
-                Editor.Save(file);
-                file.Flush();
-                file.Close();
-
-            }
+            File.WriteAllText(FilePath,Editor.Text);
         }
     }
 }

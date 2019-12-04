@@ -1,37 +1,49 @@
 ﻿using System;
+using System.CodeDom;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing.Imaging;
+using System.Globalization;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using ElCommon.Util;
 using GalaSoft.MvvmLight;
-using ICSharpCode.AvalonEdit;
-using ICSharpCode.AvalonEdit.Document;
-using ICSharpCode.AvalonEdit.Highlighting;
-using ICSharpCode.AvalonEdit.Rendering;
 using log4net;
-using Microsoft.Win32;
+using ScintillaNET;
 using TspUtil.Annotations;
+using TspUtil.ViewModel;
 using Xceed.Wpf.AvalonDock;
 using Xceed.Wpf.AvalonDock.Layout;
+using Application = System.Windows.Application;
+using Color = System.Drawing.Color;
+using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
+using SaveFileDialog = Microsoft.Win32.SaveFileDialog;
 
 namespace TspUtil
 {
+    public interface IViewModel
+    {
+        void AddLogMsg(string msg, int level = 0);
+        void SaveDataFrame(string msg);
+    }
     public class MianViewModel :ViewModelBase,INotifyPropertyChanged, IViewModel
     {
         #region fields
@@ -83,9 +95,9 @@ namespace TspUtil
         private readonly List<IDev> _clientRunList = new List<IDev>();
         private int _selectClientId = 0;
         private bool _usinSimData = false;
-        private bool _usingNoBoundLst = false;
+        private bool _isCalculateChecksum = false;
         bool _isServerConnected = false;
-        bool _isCmdRun = false;
+        private static bool _isCmdRun = false;
         private bool isChooseDisplay;
         private int _fontSize;
 
@@ -98,10 +110,15 @@ namespace TspUtil
         private bool _enableBtn;
 
         private int _wantToExeCount;
+
+        private EditorContent _curEditor;
         //Operator
-        private string _iovccParam = string.Empty;
-        private string _vspParam = string.Empty;
-        private string _resxParam = string.Empty;
+        private string _pwonIovccParam = string.Empty;
+        private string _pwonVspParam = string.Empty;
+        private string _pwonResxParam = string.Empty;
+        private string _pwoffIovccParam = string.Empty;
+        private string _pwoffVspParam = string.Empty;
+        private string _pwoffResxParam = string.Empty;
         private string _brightParam = string.Empty;
 
         private string _pllParam = string.Empty;
@@ -111,6 +128,7 @@ namespace TspUtil
         private string _regdeParam = string.Empty;
 
         private string _panelb6Param = string.Empty;
+        private string _fpgaPclk = string.Empty;
 
         private string _vsaParam = string.Empty;
         private string _hasParam = string.Empty;
@@ -126,28 +144,217 @@ namespace TspUtil
         private LayoutDocumentPane _pane;
         private bool _fileManaEnable = true;
         private bool _normal = true;
-        private bool _compress = false;
+        private bool _dscMode = false;
+        private bool _ext_dscMode = false;
+        private bool _nextEnable = false;
+        private int _readLen;
+        List<List<byte[]>> _compFile = null;
+        private bool _operateEnable=false;
+        private string _selectHexOnKeySetting1 = string.Empty;
+        private string _selectHexOnKeySetting2 = string.Empty;
+        private string _selectHexOnKeySetting3 = string.Empty;
+        private string _selectHexOnKeySetting4 = string.Empty;
+        private string _selectHexOnKeySetting5 = string.Empty;
+        private string _selectHexOnKeySetting6 = string.Empty;
+
+        private Lang _curLang;
+        private bool _isChinese;
+        private bool _isEnglish;
         #endregion fields
-
-
         #region properties
+        public bool IsChinese
+        {
+            get { return _isChinese; }
+            set
+            {
+                if (value == _isChinese) return;
+                _isChinese = value;
+                if (value)
+                {
+                    CurLang = Lang.Chinese;
+                    IsEnglish = false;
+                }
+                
+                RaisePropertyChanged();
+            }
+        }
+
+        public bool IsEnglish
+        {
+            get { return _isEnglish; }
+            set
+            {
+                if (value == _isEnglish) return;
+                _isEnglish = value;
+                if (value)
+                {
+                    CurLang = Lang.English;
+                    IsChinese = false;
+                }
+                RaisePropertyChanged();
+            }
+        }
+        public Lang CurLang
+        {
+            get { return _curLang; }
+            set
+            {
+                if (value == _curLang) return;
+                _curLang = value;
+                LangSetCommand.Execute(_curLang);
+               RaisePropertyChanged();
+            }
+        }
+        public string SelectHexOnKeySetting1
+        {
+            get { return _selectHexOnKeySetting1; }
+            set
+            {
+                _selectHexOnKeySetting1 = value;
+
+            }
+        } public string SelectHexOnKeySetting2
+        {
+            get { return _selectHexOnKeySetting2; }
+            set
+            {
+                _selectHexOnKeySetting2 = value;
+
+            }
+        } public string SelectHexOnKeySetting3
+        {
+            get { return _selectHexOnKeySetting3; }
+            set
+            {
+                _selectHexOnKeySetting3 = value;
+
+            }
+        } public string SelectHexOnKeySetting4
+        {
+            get { return _selectHexOnKeySetting4; }
+            set
+            {
+                _selectHexOnKeySetting4 = value;
+
+            }
+        }
+        public string SelectHexOnKeySetting5
+        {
+            get { return _selectHexOnKeySetting5; }
+            set
+            {
+                _selectHexOnKeySetting5 = value;
+
+            }
+        }
+        public string SelectHexOnKeySetting6
+        {
+            get { return _selectHexOnKeySetting6; }
+            set
+            {
+                _selectHexOnKeySetting6 = value;
+
+            }
+        }
+        public bool OperateEnable
+        {
+            get => _operateEnable;
+            set
+            {
+                _operateEnable = value;
+                RaisePropertyChanged();
+            }
+        }
+        private List<List<byte[]>> CompFile
+        {
+            get => _compFile ?? (_compFile = new List<List<byte[]>>());
+        }
+        public int ReadLen
+        {
+            get { return _readLen; }
+            set
+            {
+                _readLen = value;
+                _gbl.ReadParamCount = value;
+                RaisePropertyChanged();
+            }
+        }
+
+        public EditorContent CurEditor
+        {
+            get { return _curEditor; }
+            set { _curEditor = value; }
+        }
+
+        public string PwoffResxParam
+        {
+            get { return _pwoffResxParam; }
+            set
+            {
+                _pwoffResxParam = value;
+                RaisePropertyChanged();
+            }
+        }
+
+        public string PwoffVspParam
+        {
+            get { return _pwoffVspParam; }
+            set
+            {
+                _pwoffVspParam = value; 
+                RaisePropertyChanged();
+            }
+        }
+
+        public string PwoffIovccParam
+        {
+            get { return _pwoffIovccParam; }
+            set
+            {
+                _pwoffIovccParam = value; 
+                RaisePropertyChanged();
+            }
+        }
+        public bool NextEnable
+        {
+            get => _nextEnable;
+            set
+            {
+                if (value == _nextEnable) return;
+                _nextEnable = value;
+                RaisePropertyChanged();
+            }
+        }
         public bool Normal
         {
             get => _normal;
             set
             {
-                if (value== _normal) return;
+                if (value == _normal) return;
                 _normal = value;
+                _gbl.NormalMode = value;
                 RaisePropertyChanged();
             }
         }
-        public bool Compress
+        public bool DscMode
         {
-            get => _compress;
+            get => _dscMode;
             set
             {
-                if (value == _compress) return;
-                _compress = value;
+                if (value == _dscMode) return;
+                _dscMode = value;
+                _gbl.DscMode = value;
+                RaisePropertyChanged();
+            }
+        }
+        public bool Ext_DscMode
+        {
+            get => _ext_dscMode;
+            set
+            {
+                if (value == _ext_dscMode) return;
+                _ext_dscMode = value;
+                _gbl.ExtDscMode = value;
                 RaisePropertyChanged();
             }
         }
@@ -210,36 +417,38 @@ namespace TspUtil
         }
 
 
-        public string IovccParam
+        public string PwonIovccParam
         {
-            get => _iovccParam;
+            get => _pwonIovccParam;
             set
             {
-                if (value == _iovccParam) return;
-                _iovccParam = value;
+                if (value == _pwonIovccParam) return;
+                _pwonIovccParam = value;
                 RaisePropertyChanged();
             }
         }
-        public string VspParam
+        public string PwonVspParam
         {
-            get => _vspParam;
+            get => _pwonVspParam;
             set
             {
-                if (value == _vspParam) return;
-                _vspParam = value;
+                if (value == _pwonVspParam) return;
+                _pwonVspParam = value;
                 RaisePropertyChanged();
             }
         }
-        public string ResxParam
+        public string PwonResxParam
         {
-            get => _resxParam;
+            get => _pwonResxParam;
             set
             {
-                if (value == _resxParam) return;
-                _resxParam = value;
+                if (value == _pwonResxParam) return;
+                _pwonResxParam = value;
                 RaisePropertyChanged();
             }
         }
+
+
         public string BrightParam
         {
             get => _brightParam;
@@ -247,7 +456,6 @@ namespace TspUtil
             {
                 if (value == _brightParam) return;
                 _brightParam = value;
-                _gbl.Bright = value;
                 RaisePropertyChanged();
             }
         }
@@ -270,7 +478,6 @@ namespace TspUtil
             {
                 if (value == _regb6Param) return;
                 _regb6Param = value;
-                _gbl.Regb6 = value;
                 RaisePropertyChanged();
             }
         }
@@ -302,11 +509,19 @@ namespace TspUtil
             {
                 if (value == _panelb6Param) return;
                 _panelb6Param = value;
-                _gbl.Panelb6 = value;
                 RaisePropertyChanged();
             }
         }
-
+        public string FpgaPclk
+        {
+            get { return _fpgaPclk; }
+            set
+            {
+                if(_fpgaPclk==value)return;
+                _fpgaPclk = value;
+                RaisePropertyChanged();
+            }
+        }
         public string VsaParam
         {
             get => _vsaParam;
@@ -465,7 +680,7 @@ namespace TspUtil
         }
 
         public Gbl Gbl => _gbl;
-        public bool IsCmdRun
+        public static bool IsCmdRun
         {
             get => _isCmdRun;
             set
@@ -651,14 +866,14 @@ namespace TspUtil
                 RaisePropertyChanged();
             }
         }
-        public bool UsingNoBoundLst
+        public bool IsCalculateChecksum
         {
-            get => _usingNoBoundLst;
+            get => _isCalculateChecksum;
             set
             {
-                if (_usingNoBoundLst == value) return;
-                _usingNoBoundLst = value;
-                _gbl.UsingNoBoundLst = value;
+                if (_isCalculateChecksum == value) return;
+                _isCalculateChecksum = value;
+                _gbl.IsCalculateChecksum = value;
                 RaisePropertyChanged();
             }
         }
@@ -715,12 +930,13 @@ namespace TspUtil
                 RaisePropertyChanged();
             }
         }
-        public string Address
+        public string RemoteAddress
         {
-            get => _address;
+            get => _remoteAddress;
             set
             {
-                _address = value;
+                _remoteAddress = value;
+                _gbl.RemoteIpAddress = value;
             }
         }
 
@@ -836,6 +1052,7 @@ namespace TspUtil
             {
                 if (value == _isAddSizeToHeader) return;
                 _isAddSizeToHeader = value;
+                _gbl.IsAddSizeToHeader = value;
                 RaisePropertyChanged();
             }
         }
@@ -936,7 +1153,6 @@ namespace TspUtil
                 _gbl.UsingSimData = UsinSimData;
                 _gbl.IsAddSizeToHeader = IsAddSizeToHeader;
                 _gbl.Save(_cfg, typeof(Gbl));
-                //ProgrammeSaveFile.Execute(CurProgmFile);
             }
             catch (Exception e)
             {
@@ -1014,7 +1230,14 @@ namespace TspUtil
 
             return sendState;
         }
-
+        /// <summary>
+        /// 给cmd模式用的不需要更新界面
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="size"></param>
+        /// <param name="dev"></param>
+        /// <param name="fillUp"></param>
+        /// <returns></returns>
         private bool DataSendWithBlockRetry(byte[] data, int size, IDev dev, bool fillUp)
         {
 
@@ -1069,15 +1292,29 @@ namespace TspUtil
         /// <summary>
         /// 
         /// </summary>
-        public void CmdNetWorkSend()
+        public void DDRSend()
         {
             byte[] erase = StringToByteArray("ddrstop");//DDR停止命令
-            byte[] show = StringToByteArray("show");
-            byte[] poweron = StringToByteArray("poweron");
+            //byte[] show = StringToByteArray("showddr");
+            byte[] poweron = StringToByteArray("$c.DUT.powerOn,fpga_CompressMode\r\n");
+            //if (Normal)
+            //{
+            //    poweron = StringToByteArray("$c.DUT.powerOn,NormalMode\r\n");
+            //}
+            //else if (DscMode)
+            //{
+            //    poweron = StringToByteArray("$c.DUT.poweron,DSCMode\r\n");
+            //}
+            //else if (Ext_DscMode)
+            //{
+            //    poweron = StringToByteArray("$c.DUT.poweron,EXT_DSCMode\r\n");
+            //}
             if (ClientRunList.Any())
             {
                 var tsks = ClientRunList.Select(pair => Task.Factory.StartNew(() =>
                 {
+                    _isDDrSend = true;
+                    _isPowerOn = true;
                     if (pair.DataSendFrame(poweron, poweron.Length, _gbl.LongTimeoutForElapsed))
                     {
                         AddLogMsg("发送power on命令", 1);
@@ -1091,88 +1328,207 @@ namespace TspUtil
                     {
                         for (int i = 0; i < ImgItemInfos.Count; i++)
                         {
-                            foreach (var dev in ClientRunList)
+                            if (ImgItemInfos[i].IsActived)
                             {
-                                dev.HeaderList = new List<byte>();
-                                dev.FinalList = new List<byte>();
-                                dev.LmgLenCount = 0;
-                            }
-
-                            if (!ActiveImgItem(ImgItemInfos[i], pair))
-                            {
-                                AddLogMsg("解析失败！", 1);
-                                //PanelUnLock = true;
-                            }
-                            //data analyze
-                            else
-                            {
-                                var sw = new Stopwatch();
-                                sw.Start();
-
-                                var frameLen = _gbl.FrameLen;
-                                if (IsEthSim)
+                                foreach (var dev in ClientRunList)
                                 {
-                                    _simp.WriteSperator();
-                                    _simp.WriteLogFile($"IMAGE DATA --> HL: {pair.HeaderList.Count} , DL: {pair.FinalList.Count}      {ImgItemInfos[i].Des}");
-                                    _simp.WriteSperator();
-                                    frameLen = _gbl.SimFrameLen;
+                                    dev.HeaderList = new List<byte>();
+                                    dev.FinalList = new List<byte>();
+                                    dev.LmgLenCount = 0;
                                 }
 
-                                if (!pair.DataSendFrame(pair.HeaderList.ToArray(), pair.HeaderList.Count))
+                                if (!ActiveImgItem(ImgItemInfos[i], pair))
                                 {
-                                    AddLogMsg("图片头发送失败，请重新发送", 1);
+                                    AddLogMsg("解析失败！", 1);
+                                    //PanelUnLock = true;
                                 }
-                                else if (!DataSendWithBlockRetry(pair.FinalList.ToArray(), frameLen, pair, true))
-                                {
-                                    AddLogMsg("图片数据发送失败，请重新发送", 1);
-                                }
+                                //data analyze
                                 else
                                 {
+                                    var sw = new Stopwatch();
+                                    sw.Start();
 
-
-
-                                    //List<byte> Checksum = new List<byte>();
-                                    //Checksum.AddRange(DataBmpAlg.HexStringToByteArray(ImgItemInfos[i].Cs));
-                                    // Array.Copy(Checksum.ToArray(), 0, send, picoff.Length, Checksum.ToArray().Length);
-                                    if (pair.DataSendFrame(poweron, poweron.Length, _gbl.LongTimeoutForElapsed))
+                                    var frameLen = _gbl.FrameLen;
+                                    if (IsEthSim)
                                     {
-                                        AddLogMsg("发送power on命令", 1);
+                                        _simp.WriteSperator();
+                                        _simp.WriteLogFile($"IMAGE DATA --> HL: {pair.HeaderList.Count} , DL: {pair.FinalList.Count}      {ImgItemInfos[i].Des}");
+                                        _simp.WriteSperator();
+                                        frameLen = _gbl.SimFrameLen;
                                     }
-                                    if (!pair.DataSendFrame(show, show.Length, _gbl.LongTimeoutForElapsed))
+
+                                    if (!pair.DataSendFrame(pair.HeaderList.ToArray(), pair.HeaderList.Count))
                                     {
-                                        AddLogMsg("发送show命令", 1);
+                                        AddLogMsg("图片头发送失败，请重新发送", 1);
+                                    }
+                                    else if (!DataSendWithBlockRetry(pair.FinalList.ToArray(), frameLen, pair, true, (a, b) =>
+                                    {
+                                        ProgressData = b; //更新进度条
+                                    }))
+                                    {
+                                        AddLogMsg("图片数据发送失败，请重新发送", 1);
                                     }
                                     else
                                     {
-                                        AddLogMsg($"图片{ImgItemInfos[i].Des} 发送完成,总共发送字节数：{pair.LmgLenCount}, 耗时 {sw.ElapsedMilliseconds:D6}ms");
-                                        ImgItemInfos[i].ImgOpState = ImgOpState.Success;
+                                        byte[] ddroff = StringToByteArray("ddroff");
+                                        List<byte> Checksum = new List<byte>();
+                                        Checksum.AddRange(DataBmpAlg.HexStringToByteArray(ImgItemInfos[i].Cs));
+
+                                        byte[] send = new byte[Checksum.ToArray().Length + ddroff.Length];
+                                        Array.Copy(ddroff, 0, send, 0, 6);
+                                        Array.Copy(Checksum.ToArray(), 0, send, ddroff.Length, Checksum.ToArray().Length);
+                                        if (!pair.DataSendFrame(send, send.Length, _gbl.LongTimeoutForElapsed))
+                                        {
+                                            AddLogMsg("ddroff发送失败，结尾发送失败请重新发送", 1);
+                                            ImgItemInfos[i].ImgOpState = ImgOpState.Fail;
+                                        }
+                                        else
+                                        {
+                                            AddLogMsg($"图片{ImgItemInfos[i].Des} 发送完成,总共发送字节数：{pair.LmgLenCount}, 耗时 {sw.ElapsedMilliseconds:D6}ms");
+                                            ImgItemInfos[i].ImgOpState = ImgOpState.Success;
+                                        }
                                     }
 
+                                    sw.Stop();
                                 }
 
-                                sw.Stop();
+                                if (ImgItemInfos[i].ImgOpState == ImgOpState.None)
+                                    ImgItemInfos[i].ImgOpState = ImgOpState.Fail;
                             }
-
-                            if (ImgItemInfos[i].ImgOpState == ImgOpState.None)
-                                ImgItemInfos[i].ImgOpState = ImgOpState.Fail;
+                            
                         }
                     }
                 }));
+                try
+                {
+                    tsks.LastOrDefault().RunSynchronously();
+                }
+                catch (Exception)
+                {
 
-                Task.WaitAll(tsks.ToArray());
+                }
             }
             else
             {
                 AddLogMsg("无网络设备连接，请连接设备后再发送", 1);
             }
         }
+
+        public bool SendByCmd()
+        {
+            var pair = ClientRunList.LastOrDefault();
+            byte[] erase = StringToByteArray("ddrstop");//DDR停止命令
+            byte[] poweron = StringToByteArray("$c.DUT.powerOn,fpga_CompressMode\r\n");
+            //if (Normal)
+            //{
+            //    poweron = StringToByteArray("$c.DUT.powerOn,NormalMode\r\n");
+            //}
+            //else if (DscMode)
+            //{
+            //    poweron = StringToByteArray("$c.DUT.poweron,DSCMode\r\n");
+            //}
+            //else if (Ext_DscMode)
+            //{
+            //    poweron = StringToByteArray("$c.DUT.poweron,EXT_DSCMode\r\n");
+            //}
+           
+            var isSendOk = false;
+            _isDDrSend = true;
+            _isPowerOn = true;
+            if (pair.DataSendFrame(poweron, poweron.Length, _gbl.LongTimeoutForElapsed))
+            {
+                AddLogMsg("发送power on命令", 1);
+            }
+            if (!pair.DataSendFrame(erase, 0, GblInfo.LongTimeoutForElapsed))
+            {
+                AddLogMsg($"ddrstop指令发送失败, {pair}", 1);
+            }
+            else
+            {
+                for (int i = 0; i < ImgItemInfos.Count; i++)
+                {
+                    if (ImgItemInfos[i].IsActived)
+                    {
+                        foreach (var dev in ClientRunList)
+                        {
+                            dev.HeaderList = new List<byte>();
+                            dev.FinalList = new List<byte>();
+                            dev.LmgLenCount = 0;
+                        }
+
+                        if (!ActiveImgItem(ImgItemInfos[i], pair))
+                        {
+                            AddLogMsg("解析失败！", 1);
+                            //PanelUnLock = true;
+                        }
+                        //data analyze
+                        else
+                        {
+                            var sw = new Stopwatch();
+                            sw.Start();
+
+                            var frameLen = _gbl.FrameLen;
+                            if (IsEthSim)
+                            {
+                                _simp.WriteSperator();
+                                _simp.WriteLogFile($"IMAGE DATA --> HL: {pair.HeaderList.Count} , DL: {pair.FinalList.Count}      {ImgItemInfos[i].Des}");
+                                _simp.WriteSperator();
+                                frameLen = _gbl.SimFrameLen;
+                            }
+
+                            if (!pair.DataSendFrame(pair.HeaderList.ToArray(), pair.HeaderList.Count))
+                            {
+                                AddLogMsg("图片头发送失败，请重新发送", 1);
+                            }
+                            else if (!DataSendWithBlockRetry(pair.FinalList.ToArray(), frameLen, pair, true, (a, b) =>
+                            {
+                               AddLogMsg($"Load Process：{b}");
+                            }))
+                            {
+                                AddLogMsg("图片数据发送失败，请重新发送", 1);
+                            }
+                            else
+                            {
+                                byte[] ddroff = StringToByteArray("ddroff");
+                                List<byte> Checksum = new List<byte>();
+                                Checksum.AddRange(DataBmpAlg.HexStringToByteArray(ImgItemInfos[i].Cs));
+
+                                byte[] send = new byte[Checksum.ToArray().Length + ddroff.Length];
+                                Array.Copy(ddroff, 0, send, 0, 6);
+                                Array.Copy(Checksum.ToArray(), 0, send, ddroff.Length, Checksum.ToArray().Length);
+                                if (!pair.DataSendFrame(send, send.Length, _gbl.LongTimeoutForElapsed))
+                                {
+                                    AddLogMsg("ddroff发送失败，结尾发送失败请重新发送", 1);
+                                    ImgItemInfos[i].ImgOpState = ImgOpState.Fail;
+                                }
+                                else
+                                {
+                                    isSendOk = true;
+                                    AddLogMsg($"图片{ImgItemInfos[i].Des} 发送完成,总共发送字节数：{pair.LmgLenCount}, 耗时 {sw.ElapsedMilliseconds:D6}ms");
+                                    ImgItemInfos[i].ImgOpState = ImgOpState.Success;
+                                }
+                            }
+                            sw.Stop();
+                        }
+
+                        if (ImgItemInfos[i].ImgOpState == ImgOpState.None)
+                            ImgItemInfos[i].ImgOpState = ImgOpState.Fail;
+                    }
+                }
+            }
+            return isSendOk;
+        }
+
+
+
         public void CmdPowerOn()
         {
-            var tsks = ClientRunList.Select(pair => Task.Factory.StartNew(() =>
+            var pair = ClientRunList.LastOrDefault();
+            byte[] poweron = StringToByteArray("poweron");
+            if (!pair.DataSendFrame(poweron, poweron.Length, _gbl.LongTimeoutForElapsed))
             {
-                byte[] poweron = StringToByteArray("poweron");
-                pair.DataSendFrame(poweron, poweron.Length, _gbl.LongTimeoutForElapsed);
-            }));
+                AddLogMsg("powon命令执行失败");
+            }
         }
         /// <summary>
         /// Send all bmpphoto by network. 
@@ -1383,7 +1739,7 @@ namespace TspUtil
         private readonly string _xmlCfgV2 = @"..\cfgv2.xml";
         public MianViewModel()
         {
-            SwVersion = "1.1.0";
+            SwVersion = "1.1.2";
 #if DEBUG
             SwVersion = "0.0.0";
 #endif
@@ -1405,13 +1761,12 @@ namespace TspUtil
             SelectSpeed = _gbl.SelectSpeed;
             LocalSerialComm();
             PadStr = _gbl.PadStr;
-            Address = _gbl.RemoteIpAddress;
+            RemoteAddress = _gbl.RemoteIpAddress;
             _gbl.LocalIpAddress = LocalIPAddress();
-
             Port = _gbl.Port;
             IsInverse = _gbl.IsInverse;
             UsinSimData = _gbl.UsingSimData;
-            UsingNoBoundLst = _gbl.UsingNoBoundLst;
+            IsCalculateChecksum = _gbl.IsCalculateChecksum;
             OddOffset = _gbl.OddOffset.ToString();
             EvenOffset = _gbl.EvenOffset.ToString();
             IsSerialSend = _gbl.IsSerialSend;
@@ -1424,19 +1779,44 @@ namespace TspUtil
             IsChooseDisplay = _gbl.IsChooseDisplay;
             IsPictureReArang = _gbl.IsPicReArrange;
             WantToExeCount = _gbl.WantToExeCount;
+            ReadLen = _gbl.ReadParamCount;
+            Normal = _gbl.NormalMode;
+            DscMode = _gbl.DscMode;
+            Ext_DscMode = _gbl.ExtDscMode;
             OddMaskArgb.Add(new MaskForArgbItem(_gbl.OddRgbA));
             EvenMaskArgb.Add(new MaskForArgbItem(_gbl.EvenRgbA));
-            if (File.Exists(_gbl.FileListXml))
+            if (!IsCmdRun)
             {
-                FromFileRead(_gbl.FileListXml);
+                if (File.Exists(_gbl.FileListXml))
+                {
+                    FromFileRead(_gbl.FileListXml);
+                }
+                FontSize = _gbl.FontSize;
+                _algMap = ProgrammeUtil.InitCmdMap();
+                if (IsNetWorkSend)
+                {
+                    LoadFromWorkDir();
+                }
+
+                Enum.TryParse(_gbl.LangSet, true, out Lang lang);
+                if (lang == Lang.English)
+                {
+                    IsEnglish = true;
+                }
+                else
+                {
+                    IsChinese = true;
+                }
+                EnableBtn = true;
+                App.Locator.KeyBind.ParamLst.Add(new KeyBindParam("PowerOn_Panel_bistmode", "0x0100"));
+                App.Locator.KeyBind.ParamLst.Add(new KeyBindParam("PowerOn_Soc_bistmode", "0x0101"));
+                App.Locator.KeyBind.ParamLst.Add(new KeyBindParam("PowerOn_Normalmode", "0x0102"));
+                App.Locator.KeyBind.ParamLst.Add(new KeyBindParam("PowerOn_Dscmode", "0x0103"));
+                App.Locator.KeyBind.ParamLst.Add(new KeyBindParam("PowerOn_Ext_mode", "0x0104"));
+                App.Locator.KeyBind.ParamLst.Add(new KeyBindParam("Power_Off", "0x0200"));
+                App.Locator.KeyBind.ParamLst.Add(new KeyBindParam("Next_image", "0x0201"));
+                App.Locator.KeyBind.ParamLst.Add(new KeyBindParam("Previous_image", "0x0202"));
             }
-            FontSize = _gbl.FontSize;
-            _algMap = ProgrammeUtil.InitCmdMap();
-            if (IsNetWorkSend)
-            {
-                LoadFromWorkDir();
-            }
-            EnableBtn = true;
         }
         private void LoadFromWorkDir()
         {
@@ -1456,7 +1836,7 @@ namespace TspUtil
             else
             {
                 Directory.CreateDirectory(_gbl.ProgmWorkDir);
-                AddLogMsg($"自动创建编程工作目录:{_gbl.ProgmWorkDir},请存放文件");
+                AddLogMsg($"自动创建编辑工作目录:{_gbl.ProgmWorkDir}");
             }
         }
         /// <summary>
@@ -1547,6 +1927,7 @@ namespace TspUtil
             var pXml = new PlainXmlDb(filePath);
             var allValue = new List<SaveFileList>();
             pXml.LoadObjListFromDb("File", ref allValue);
+            var index = 0;
             foreach (var va in allValue)
             {
                 if (!File.Exists(va.FnPath))
@@ -1559,6 +1940,7 @@ namespace TspUtil
                     Cs = va.Cs,
                     Des = va.Des,
                     FnPath = va.FnPath,
+                    FileIndex = index++,
                 });
             }
         }
@@ -1590,35 +1972,38 @@ namespace TspUtil
             }
             return ipaddress;
         }
+
         /// <summary>
         /// 连接服务器
         /// </summary>
         public void SockConnect()
         {
-            DevInitUtil.ConnectToServer(GblInfo, out var server);
+            DevInitUtil.ConnectToServer(_gbl,out TcpSocketEx server);
 
             if (server != null)
             {
-                var dev = App.Locator.ClientDev;
+                var dev = new ClientNetDev();
+                dev.Gbl1 = _gbl;
                 dev.Sock = server;
                 dev.InitParam();
+                
                 IsServerConnected = true;
                 ClientRunList.Add(dev);
-                AddLogMsg($"已成功连接到{Port}端口上的服务器{Address}");
+                AddLogMsg($"已成功连接到{Port}端口上的服务器{RemoteAddress}");
                 //Application.Current.Dispatcher.Invoke(() =>
                 //{
                 //    ViewClients.Add(new ClientList(dev, ViewClients.Count, Address));
                 //});
-                ViewClients.Add(new ClientList(dev, ViewClients.Count, Address));
+                ViewClients.Add(new ClientList(dev, ViewClients.Count, RemoteAddress));
                 new Thread(obj =>
                     {
-                        var d = (IDev)obj;
+                        var d = (IDev) obj;
                         var revData = new List<byte>();
                         //var ok = Encoding.ASCII.GetBytes("ok");
                         // d.DataSendFrame(ok,0,ok.Length);
                         while (ClientRunList.Contains(d))
                         {
-                        
+
                             try
                             {
                                 var data = d.Receive();
@@ -1627,7 +2012,7 @@ namespace TspUtil
                                     revData.AddRange(data);
                                     var tmpReceivingString = new List<string>();
                                     tmpReceivingString.Add(Encoding.ASCII.GetString(revData.ToArray()));
-                               
+
 #if debug
                                     //AddLogMsg($"REV <-- {string.Join("", Array.ConvertAll(tmpReceivingString.ToArray(), p => p))}");
 #endif
@@ -1636,6 +2021,15 @@ namespace TspUtil
                                         d.ResetEvent.Set();
                                     }
                                     else if (tmpReceivingString.Exists(p => ClientNetDev.picNG.IsMatch(p)))
+                                    {
+                                        d.IsReceiveNg = true;
+                                        d.ResetEvent.Set();
+                                    }
+                                    else if (tmpReceivingString.Exists(p => ClientNetDev.ddrOffOk.IsMatch(p)))
+                                    {
+                                        d.ResetEvent.Set();
+                                    }
+                                    else if (tmpReceivingString.Exists(p => ClientNetDev.ddrOffNg.IsMatch(p)))
                                     {
                                         d.IsReceiveNg = true;
                                         d.ResetEvent.Set();
@@ -1697,33 +2091,68 @@ namespace TspUtil
                                     }
                                     else if (tmpReceivingString.Exists(p => ClientNetDev.progmOk.IsMatch(p)))
                                     {
-                                        d.ResetEvent.Set();
-
                                         if (_isReadNextLine)
                                         {
                                             Application.Current.Dispatcher.Invoke(() =>
                                             {
                                                 var ds = new byte[revData.Count];
                                                 Array.Copy(revData.ToArray(), 0, ds, 0, revData.Count);
-
-                                                if (ds.Length > 1)
+                                                if (tmpReceivingString.LastOrDefault().StartsWith("{OK0000|"))
                                                 {
-                                                    var hexText = string.Join($" ", Array.ConvertAll(ds, input => $"{input:X2}"));
-                                                    _curEditor.AppendText(hexText + "\r\n");
+                                                    var bm = new byte[4];
+                                                    Array.Copy(revData.ToArray(), 11, bm, 0, 4);
+                                                    var start = Encoding.ASCII.GetString(bm);
+                                                    _fileIndex = int.Parse(start[0].ToString());
+                                                    _lineIndex = int.Parse(start.Substring(1));
+                                                    d.ResetEvent.Set();
                                                 }
                                                 else
                                                 {
-                                                    var hexText = string.Join($" ", Array.ConvertAll(ds, input => $"{input:X2}"));
-                                                    _curEditor.AppendText(hexText.Substring(0, hexText.Length - 1) + "\r\n");
+                                                    var hexText = string.Join(" ",
+                                                        Array.ConvertAll(ds, input => $"{input:X2}"));
+                                                    _curEditor.Editor.AppendText(hexText + "\r\n");
+                                                    d.ResetEvent.Set();
                                                 }
-
                                             });
                                             _isReadNextLine = false;
+                                        }
+                                        else//读取
+                                        {
+                                            d.ResetEvent.Set();
+                                            if (revData.Count > 8)
+                                            {
+                                                var resPonse = (char) revData[7];
+                                                var len = revData[8];
+                                                var lenInt = int.Parse($"{len}");
+                                                var arr = new byte[lenInt-2];
+                                                Array.Copy(revData.ToArray(), 11,arr,0,lenInt-2);
+                                                if (resPonse == '|')
+                                                {
+                                                    AddLogMsg($"REV DATA->{string.Join(" ",Array.ConvertAll(arr,p=>"0x"+p.ToString("x2")))}");
+                                                }
+                                            }
                                         }
                                     }
                                     else if (tmpReceivingString.Exists(p => ClientNetDev.progmEr.IsMatch(p)))
                                     {
                                         d.ResetEvent.Set();
+                                    }
+                                    else if (tmpReceivingString.Exists(p => ClientNetDev.deviceVersion.IsMatch(p)))
+                                    {
+                                        d.ResetEvent.Set();
+                                        var verStr = Regex.Split(tmpReceivingString.LastOrDefault(), ",");
+                                        if (_isHw)
+                                        {
+                                            _hwStr += verStr.Last().Replace("\r\n", "");
+                                        }
+                                        else if (_isMcu)
+                                        {
+                                            _mcuStr += verStr.Last().Replace("\r\n", "");
+                                        }
+                                        else if (_isFpga)
+                                        {
+                                            _fpgaStr += verStr.Last().Replace("\r\n", "");
+                                        }
                                     }
                                     else if (tmpReceivingString.Exists(p => ClientNetDev.slaveWrite.IsMatch(p)))
                                     {
@@ -1732,11 +2161,21 @@ namespace TspUtil
                                     else if (tmpReceivingString.Exists(p => ClientNetDev.slaveRead.IsMatch(p)))
                                     {
                                         d.ResetEvent.Set();
+                                        //  AddLogMsg($"");
+                                        var cmdData = tmpReceivingString.LastOrDefault().Split(',');
+                                        if (cmdData.Length > 2)
+                                        {
+                                            for (var i = 2; i < cmdData.Length; i++)
+                                            {
+                                                ConvertTheText(i - 1, cmdData[i]);
+                                            }
+                                        }
                                     }
                                     else
                                     {
                                         Thread.Sleep(10);
                                     }
+
                                     if (_isPowerOn)
                                     {
                                         if (tmpReceivingString.Exists(p => ClientNetDev.slavePowerOn.IsMatch(p)))
@@ -1748,6 +2187,7 @@ namespace TspUtil
                                         {
                                             AddLogMsg("上电失败，请重新尝试");
                                         }
+
                                         _isPowerOn = false;
                                     }
 
@@ -1759,13 +2199,13 @@ namespace TspUtil
                                             if (CheckSumCompare(tmpReceivingString))
                                             {
                                                 _rsst.Set();
-
                                             }
                                             else
                                             {
                                                 AddLogMsg("无一致图片，请重新下载后选择显示");
                                             }
                                         }
+
                                         _selectPic = false;
                                     }
 
@@ -1780,11 +2220,9 @@ namespace TspUtil
                                         {
                                             AddLogMsg("关电失败，请重新尝试");
                                         }
+
                                         _isPowerff = false;
                                     }
-
-
-
                                 }
                                 else
                                 {
@@ -1793,7 +2231,7 @@ namespace TspUtil
                                         IsServerConnected = false;
                                         AddLogMsg("服务器已断开连接");
                                         PanelUnLock = true;
-                                        ClientRunList.Remove(d);
+                                        ClientRunList.Clear();
                                         for (var i = 0; i < ViewClients.Count; i++)
                                         {
                                             if (ViewClients[i].Dev == d)
@@ -1801,6 +2239,7 @@ namespace TspUtil
                                                 ViewClients[i].IsOffLine = true;
                                             }
                                         }
+
                                         break;
                                     }
                                 }
@@ -1809,11 +2248,24 @@ namespace TspUtil
                             }
                             catch (Exception e)
                             {
-                                AddLogMsg($"Rev ERR: {e.Message}", 1);
+                                AddLogMsg($"Rev ERR: {e.Message}:Res{e.HResult}", 1);
+                                IsServerConnected = false;
+                                AddLogMsg("服务器已断开连接");
+                                PanelUnLock = true;
+                                d.Disconnect();
+                                ClientRunList.Clear();
+                                for (var i = 0; i < ViewClients.Count; i++)
+                                {
+                                    if (ViewClients[i].Dev == d)
+                                    {
+                                        ViewClients[i].IsOffLine = true;
+                                    }
+                                }
+                                break;
                             }
                         }
                     })
-                    { IsBackground = true, Priority = ThreadPriority.AboveNormal }.Start(dev);
+                    {IsBackground = true, Priority = ThreadPriority.AboveNormal}.Start(dev);
             }
             else
             {
@@ -1821,12 +2273,14 @@ namespace TspUtil
                 AddLogMsg($"连接服务器失败:{_gbl.RemoteIpAddress}:{_gbl.Port}", 0);
             }
         }
+
         public void SockDisconnect()
         {
-
             if (ClientRunList.Any())
             {
-                ClientRunList.RemoveAll(delegate (IDev item) {
+                ClientRunList.RemoveAll(delegate (IDev item)
+                {
+                    item.Disconnect();
                     return true;
                 });
             }
@@ -1989,7 +2443,7 @@ namespace TspUtil
         }
 
 
-
+        private bool _isDDrSend = false;
         private SemaphoreSlim _slim = new SemaphoreSlim(1);
         /// <summary>
         /// analyze the picture
@@ -2044,7 +2498,7 @@ namespace TspUtil
                         }
 
                         dev.FinalList = lstdata;
-                        if (!IsCmdRun)
+                        if (!IsCmdRun && !_isDDrSend)
                         {
                             dev.HeaderList.AddRange(
                                 CreateHeadData(imageIndex, data.FinalData.Count, w, h, imgItem.Des));
@@ -2082,28 +2536,18 @@ namespace TspUtil
         public bool DataSendALine()
         {
             List<byte[]> allLine = new List<byte[]>();
-            List<byte[]> oneLine = null;
+            List<byte[]> oneLine = new List<byte[]>();
             int curFileLine = 0;
-            var alg = App.Locator.TextModal.ProgrammeLine(CurProgmFile, AlgMap, out IList<DocumentLine> edLines);
-            foreach (var editorContent in App.Locator.TextModal.AllFileEditor)
+            var alg = new AlgProgmFiles(CurProgmFile, CurEditor, AlgMap);//App.Locator.TextModal.ProgrammeLine(CurProgmFile, AlgMap, out LineCollection edLines);
+            curFileLine = CurEditor.Editor.CurrentLine;
+            foreach (var line in CurEditor.Editor.Lines)
             {
-                if (editorContent.FilePath == CurProgmFile)
+                if (line.Index == curFileLine)
                 {
-                    curFileLine = editorContent.SelectedLine;
+                    oneLine.AddRange(alg.CompileLine(line.Text, curFileLine));
                     break;
                 }
-            }
-            foreach (var line in edLines)
-            {
-                oneLine = alg.CompileLine(line, curFileLine);
-                if (oneLine != null)
-                {
-                    break;
-                }
-                else
-                {
-                    continue;
-                }
+               
             }
             allLine.AddRange(oneLine.ToArray());
             var lineResult = new List<byte[]>();
@@ -2125,15 +2569,19 @@ namespace TspUtil
                         {
                             _log.Debug($"发送一行数据失败, {pair}");
                         }
-                        _log.Debug($"---> {string.Join($" ", Array.ConvertAll(val, input => $"{input:X2}"))}:{Encoding.ASCII.GetString(val)}");
-                        AddLogMsg("发送一行数据成功。");
+                        else
+                        {
+                            _log.Debug($"---> {string.Join($" ", Array.ConvertAll(val, input => $"{input:X2}"))}:{Encoding.ASCII.GetString(val)}");
+                            AddLogMsg("发送一行数据成功。");
+                        }
+                       
                     }
                 }));
                 try
                 {
                     tsks.LastOrDefault().RunSynchronously();
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     //
                 }
@@ -2151,28 +2599,35 @@ namespace TspUtil
         {
             if (ClientRunList.Any())
             {
-                var alg = App.Locator.TextModal.ProgrammeLine(CurProgmFile, AlgMap,
-                        out IList<DocumentLine> allLines);
-                var tmpLst = new ConcurrentBag<DocumentLine>();
-                foreach (var line in allLines)
+                var alg = new AlgProgmFiles(CurProgmFile, CurEditor, AlgMap);
+                var bag = new List<LineTextInfo>();
+                foreach (var line in CurEditor.Editor.Lines)
                 {
-                    tmpLst.Add(line);
+                    bag.Add(new LineTextInfo(line.Text,line.DisplayIndex,line.MarkerGet()));
                 }
-                var tsks = ClientRunList.Select(pair => Task.Factory.StartNew((p) =>
+                var pair = ClientRunList.LastOrDefault();
+                NextEnable = true;
+                var lineResult = new List<byte[]>();
+                Task.Factory.StartNew((p) =>
                 {
-                    var lineResult = new List<byte[]>();
-                  
                     var stw = new Stopwatch();
                     stw.Start();
                     for (int j = 0; j < WantToExeCount; j++)
                     {
                         AddLogMsg($"开始执行第{j}次");
-                        foreach (var line in (ConcurrentBag<DocumentLine>)p)
+                        foreach (var line in (List<LineTextInfo>)p)
                         {
-
                             List<byte[]> allLine = new List<byte[]>();
                             List<byte[]> oneLine = null;
-                            oneLine = alg.CompileLine(line, line.LineNumber);
+                            if (line.Marker > 0)
+                            {
+                                AddLogMsg($"当前断点行为{line.LineNum+1}");
+                                // line.MarkerAdd(4);
+                                _executeNext.WaitOne(-1);
+                                _executeNext.Reset();
+                            }
+                            
+                            oneLine = alg.CompileLine(line.Text, line.LineNum+1);
                             if (oneLine != null)
                             {
                                 allLine.AddRange(oneLine.ToArray());
@@ -2186,53 +2641,25 @@ namespace TspUtil
                             for (int i = 0; i < allLine.Count; i++)
                             {
                                 var lineStr = i.ToString("000");
-                                lineResult.Add(ProgrammeUtil.ParseCmd("RU", "0", $"{lineStr}", allLine[i].ToArray()));
-                            }
-
-                            //提示当前执行的行号，并等待执行下一行的命令
-                            foreach (var poin in App.Locator.TextModal.BreakPoints)
-                            {
-                                if (poin.BreakDown && line.LineNumber == int.Parse(poin.Id))
-                                {
-                                    for (int i = 0; i < allLine.Count; i++)
-                                    {
-                                        AddLogMsg(
-                                            $"当前行{line.LineNumber}引发断点，请点击下一步,断点处的数据为{string.Join($" ", Array.ConvertAll(allLine[i].ToArray(), input => $"{input:X2}"))}:{Encoding.ASCII.GetString(allLine[i].ToArray())}");
-                                    }
-
-                                    Thread.Sleep(1000);
-                                    _executeNext.WaitOne(-1);
-                                }
+                                lineResult.Add(
+                                    ProgrammeUtil.ParseCmd("RU", "0", $"{lineStr}", allLine[i].ToArray()));
                             }
 
                             foreach (var val in lineResult)
                             {
                                 if (!pair.DataSendFrame(val, 0, _gbl.LongTimeoutForElapsed))
                                 {
-                                    _log.Debug($"发送一行数据失败, {pair}");
+                                    AddLogMsg($"在线执行{line.LineNum+1}数据失败, {pair}");
                                 }
-
-                                _log.Debug(
-                                    $"---> {string.Join($" ", Array.ConvertAll(val, input => $"{input:X2}"))}:{Encoding.ASCII.GetString(val)}");
-
-                                AddLogMsg("发送一行数据成功");
                             }
-
                             lineResult.Clear();
                         }
                     }
+
                     stw.Stop();
                     AddLogMsg($"执行完成，所用时间{stw.Elapsed}s");
-                }, tmpLst));
-
-                try
-                {
-                    tsks.LastOrDefault().RunSynchronously();
-                }
-                catch (Exception e)
-                {
-                    
-                }
+                    NextEnable = false;
+                },bag);
             }
             else
             {
@@ -2247,7 +2674,6 @@ namespace TspUtil
                 var tsks = ClientRunList.Select(pair => Task.Factory.StartNew(() =>
                 {
                     EnableBtn = false;
-                    var step = double.Parse($"{100.00 / (double) (_compFile.Count + 20)}");
                     var cn = ProgrammeUtil.ParseCmd("CN", "0", "000", new byte[] { });
                     if (!pair.DataSendFrame(cn, 0, _gbl.LongTimeoutForElapsed))
                     {
@@ -2258,10 +2684,11 @@ namespace TspUtil
                     else
                     {
                         AddLogMsg("握手成功");
-                        for (int i = 0; i < _compFile.Count; i++)
+                        for (int i = 0; i < CompFile.Count; i++)
                         {
+                            var step = double.Parse($"{100.00 / (double) (CompFile[i].Count + 20)}");
                             ProgressData = 0;
-                            AddLogMsg("擦除数据");
+                            AddLogMsg($"擦除数据,文件{i}");
                             ProgressData = 20 * step;
                             var erase = ProgrammeUtil.ParseCmd("ES", $"{i}", "000", new byte[] { });
                             if (!pair.DataSendFrame(erase, 0, _gbl.LongTimeoutForElapsed))
@@ -2272,10 +2699,9 @@ namespace TspUtil
                             _log.Debug(
                                 $"---> {string.Join($" ", Array.ConvertAll(erase, input => $"{input:X2}"))}:{Encoding.ASCII.GetString(erase)}");
                             Thread.Sleep(1000);
-                            for (int j = 0; j < _compFile[i].Count; j++)
+                            for (int j = 0; j < CompFile[i].Count; j++)
                             {
-
-                                var send = _compFile[i][j];
+                                var send = CompFile[i][j];
                                 if (!pair.DataSendFrame(send, 0, _gbl.LongTimeoutForElapsed))
                                 {
                                     _log.Debug($"发送一行数据失败, {pair}");
@@ -2297,7 +2723,7 @@ namespace TspUtil
                 try {
                     tsks.LastOrDefault().RunSynchronously();
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     //
                 }
@@ -2337,45 +2763,26 @@ namespace TspUtil
             return false;
         }
 
-        private TextEditor _curEditor;
-        public void ReadFromDevice()
+        public void ReadFromDevice(IDev pair,int i)
         {
-            int curline = 0;
             if (!string.IsNullOrEmpty(CurProgmFile))
             {
-                foreach (var editorContent in App.Locator.TextModal.AllFileEditor)
-                {
-                    if (editorContent.FilePath.Equals(CurProgmFile))
-                    {
-                        curline = editorContent.SelectedLine;
-                        _curEditor = editorContent.Editor;
-                        break;
-                    }
-                }
-                var readCmd = ProgrammeUtil.ParseCmd("RL", $"{FileIndex}", $"{curline.ToString("000")}", new byte[] { });
+                var readCmd = ProgrammeUtil.ParseCmd("RL", $"{FileIndex}", $"{i.ToString("000")}", new byte[] { });
                 if (ClientRunList.Any())
                 {
-                    var tsks = ClientRunList.Select(pair => Task.Factory.StartNew(() =>
+                    _isReadNextLine = true;
+                    pair.ResetEvent.Reset();
+                    if (!pair.DataSendFrame(readCmd, 0, _gbl.LongTimeoutForElapsed))
                     {
-                        if (!pair.DataSendFrame(readCmd, 0, 3000))
-                        {
-                            _log.Debug($"发送一行数据失败, {pair}");
-                        }
-
+                        _log.Debug($"发送一行数据失败, {pair}");
+                    }
+                    else
+                    {
                         _log.Debug(
-                            $"---> {string.Join($" ", Array.ConvertAll(readCmd, input => $"{input:X2}"))}:{Encoding.ASCII.GetString(readCmd)}");
+                        $"---> {string.Join($" ", Array.ConvertAll(readCmd, input => $"{input:X2}"))}:{Encoding.ASCII.GetString(readCmd)}");
 
-                        AddLogMsg("发送一行数据成功");
-                    }));
-                    try
-                    {
-                        tsks.LastOrDefault().RunSynchronously(TaskScheduler.Default);
+                        //AddLogMsg("发送一行数据成功");
                     }
-                    catch (Exception e)
-                    {
-
-                    }
-
                 }
                 else
                 {
@@ -2399,8 +2806,47 @@ namespace TspUtil
                
             //}
         }
+
+        public void ReadParam()
+        {
+            Action<byte[]> act = (data) =>
+            {
+                if (ClientRunList.Any())
+                {
+                    var cmd = ASCIIEncoding.ASCII.GetString(data);
+                    var tsks = ClientRunList.Select(pair => Task.Factory.StartNew(() =>
+                    {
+                        if (!pair.DataSendFrame(data, 0, 3000))
+                        {
+                            AddLogMsg($"{cmd}指令发送失败, {pair}");
+                        }
+                        else
+                        {
+                            AddLogMsg($"发送{cmd}指令成功");
+                        }
+                        
+                    }));
+                    try
+                    {
+                        tsks.LastOrDefault().RunSynchronously();
+                    }
+                    catch (Exception)
+                    {
+                        
+                    }
+                    
+                }
+                else
+                {
+                    AddLogMsg("无网络设备连接，请连接设备后再发送", 1);
+                }
+            };
+            act(StringToByteArray($"$c.register.read,{1},{ReadLen},\r\n"));
+        }
+
         #region 按钮功能
         private bool _selectPic = false;
+        private int _ddrRes = 32;
         private ICommand _imgItemSelectionChangedCmd;
         public ICommand ImgItemSelectionChangedCmd
         {
@@ -2427,17 +2873,19 @@ namespace TspUtil
                             if (IsChooseDisplay)
                             {
                                 _rsst.Reset();
-                                var curIndex = 0;
-                                for (int i=0;i<ImgItemInfos.Count;i++)
+                                byte[] sendCheckSum = null;
+                                byte[] show = null;
+                                if (_isNandSend)
                                 {
-                                    if (ImgItemInfos[i].Des==info.Des)
-                                    {
-                                        curIndex = i;
-                                        break;
-                                    }
+                                    sendCheckSum = StringToByteArray($"$c.checksum,0x{info.FileIndex.ToString("x2")}\r\n");
+                                    show = StringToByteArray($"$c.ShowImage,0x{info.FileIndex.ToString("x2")}\r\n");
                                 }
-                                byte[] sendCheckSum = StringToByteArray($"$c.checksum,{curIndex.ToString("x2")}\r\n");
-                                byte[] show = StringToByteArray($"$c.ShowImage,{curIndex.ToString("x2")}\r\n");
+                                else
+                                {
+                                    sendCheckSum = StringToByteArray($"$c.checksum,0x{(info.FileIndex + _ddrRes).ToString("x2")}\r\n");
+                                    show = StringToByteArray($"$c.ShowImage,0x{(info.FileIndex + _ddrRes).ToString("x2")}\r\n");
+                                }
+                              
                                 if (ClientRunList.Any())
                                 {
                                     var tsks = ClientRunList.Select(pair => Task.Factory.StartNew(() =>
@@ -2514,6 +2962,7 @@ namespace TspUtil
                 };
                 if (ofd.ShowDialog(Application.Current.MainWindow).HasValue)
                 {
+                    var index = ImgItemInfos.Count;
                     if (ofd.FilterIndex == 1)
                     {
                         ofd.FileNames.ToList().ForEach(p =>
@@ -2523,7 +2972,8 @@ namespace TspUtil
                                 IsActived = true,
                                 FnPath = Path.GetFullPath(p),
                                 Des = Path.GetFileName(p),
-                                Cs = "0000000000000000"
+                                Cs = "0000000000000000",
+                                FileIndex = index++,
                             });
                         });
                     }
@@ -2534,7 +2984,8 @@ namespace TspUtil
                             IsActived = true,
                             FnPath = Path.GetFullPath(ofd.FileName),
                             Des = Path.GetFileName(ofd.FileName),
-                            Cs = ""
+                            Cs = "",
+                            FileIndex = index++,
                         });
                     }
                 }
@@ -2553,12 +3004,12 @@ namespace TspUtil
             }));
         }
 
+        private bool _isNandSend = true;
         private ICommand _sendItemsCmd;
         private bool _isClientConnected;
         private bool _isAddSizeToHeader;
-
         private readonly TxtSimpLog _simp = new TxtSimpLog(Encoding.ASCII);
-        private string _address;
+        private string _remoteAddress;
         private int _port;
         private bool _highLowBytesRevert;
         public ICommand SendItemsCmd
@@ -2569,7 +3020,7 @@ namespace TspUtil
                 
                 ProgressData = 0;
                 AddLogMsg($"开始数据发送...");
-                
+                _isNandSend = true;
                 new Thread(() =>
                 {
                     PanelUnLock = false;
@@ -2608,7 +3059,23 @@ namespace TspUtil
                 }){IsBackground = true, Priority = ThreadPriority.AboveNormal}.Start();
             }));
         }
-
+        private ICommand _sendToDDR;
+        public ICommand SendToDDR
+        {
+            get => _sendToDDR ?? (_sendToDDR = new UtilRelayCommand(delegate (object obj)
+            {
+                LogItems.Clear();
+                _isNandSend = false;
+                ProgressData = 0;
+                AddLogMsg($"开始数据发送...");
+                PanelUnLock = false;
+                DDRSend();
+                PanelUnLock = true;
+            }, pre =>
+            {
+                return true;
+            }));
+        }
         private ICommand _itemsMoveUp;
         public ICommand ItemsMoveUp
         {
@@ -2669,24 +3136,41 @@ namespace TspUtil
         {
             get => _powerOnDevice ?? (_powerOnDevice = new UtilRelayCommand(delegate (object obj)
             {
-                byte[] powerOn = StringToByteArray("$c.DUT.powerOn,NormalMode\r\n");
+
+                byte[] powerOn = null;
+                if (Normal)
+                {
+                    powerOn = StringToByteArray("$c.DUT.powerOn,NormalMode\r\n");
+                }else if (DscMode)
+                {
+                    powerOn = StringToByteArray("$c.DUT.poweron,DSCMode\r\n");
+                }
+                else if(Ext_DscMode)
+                {
+                    powerOn = StringToByteArray("$c.DUT.poweron,EXT_DSCMode\r\n");
+                }
+
                 if (ClientRunList.Any())
                 {
                     _isPowerOn = true;
                     var tsks = ClientRunList.Select(pair => Task.Factory.StartNew(() =>
                     {
                         // if (!DataSendFrame(erase, currentSockId, GblInfo.LongTimeoutForElapsed))
-                        if (!pair.DataSendFrame(powerOn, 0, 3000))
+                        if (!pair.DataSendFrame(powerOn, 0, 5000))
                         {
                             AddLogMsg($"powerOn指令发送失败, {pair}");
                         }
-                        AddLogMsg("发送PowerOn指令成功");
+                        else
+                        {
+                            AddLogMsg("发送PowerOn指令成功");
+                        }
+                       
                     }));
                     try
                     {
                         tsks.LastOrDefault().RunSynchronously();
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
                         //
                     }
@@ -2706,24 +3190,29 @@ namespace TspUtil
         {
             get => _powerOffDevice ?? (_powerOffDevice = new UtilRelayCommand(delegate (object obj)
             {
-                byte[] powerOff = StringToByteArray("$c.DUT.powerOff\r\n");
+                byte[] powerOff = null;
+                powerOff = StringToByteArray("$c.DUT.powerOff\r\n");
                 if (ClientRunList.Any())
                 {
                     _isPowerff = true;
                     var tsks = ClientRunList.Select(pair => Task.Factory.StartNew(() =>
                     {
-                        if (!pair.DataSendFrame(powerOff, 0, 1000))
+                        if (!pair.DataSendFrame(powerOff, 0, 2000))
                         {
                             AddLogMsg($"powerOff指令发送失败, {pair}", 1);
                             // _log.Debug($"powerOff指令发送失败, {pair}");
                         }
-                        AddLogMsg("发送PowerOff指令成功");
+                        else
+                        {
+                            AddLogMsg("发送PowerOff指令成功");
+                        }
+
                     }));
                     try
                     {
                         tsks.LastOrDefault().RunSynchronously();
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
                         //
                     }
@@ -2764,7 +3253,7 @@ namespace TspUtil
                                 Des = Path.GetFileName(p),
                                 Cs = ""
                             });
-                            CurProgmFile = Path.GetFullPath(p);
+                            //CurProgmFile = Path.GetFullPath(p);
                         });
                     }
                     else
@@ -2783,24 +3272,24 @@ namespace TspUtil
                 return true;
             }));
         }
-        List<List<byte[]>> _compFile = null;
-        private int _index = -1;
+        
         public ICommand _proggramFile;
         public ICommand ProggramFile
         {
             get => _proggramFile ?? (_proggramFile = new UtilRelayCommand(delegate (object obj)
             {
-                var p = new AlgProgmFiles();
-                if (ProgrammeFiles.Any(s=>s.IsActived))
-                {
-                    AddLogMsg($"开始编译...");
-                    _compFile = p.CompileAllFiles(ProgrammeFiles);
-                    AddLogMsg("编译完成...");
-                }
-                else
-                {
-                   AddLogMsg("无文件被打开，请打开一个文件后再编译");
-                }
+                //var p = new AlgProgmFiles();
+                //if (ProgrammeFiles.Any(s=>s.IsActived))
+                //{
+                //    CompFile.Clear();
+                //    AddLogMsg($"开始编译...");
+                //    CompFile.AddRange(p.CompileAllFiles(ProgrammeFiles));
+                //    AddLogMsg($"编译完成,编译文件数{_compFile.Count}");
+                //}
+                //else
+                //{
+                //   AddLogMsg("无文件被打开，请打开一个文件后再编译");
+                //}
 
             }, pre =>
             {
@@ -2825,86 +3314,31 @@ namespace TspUtil
             get => _proggramSendALl ?? (_proggramSendALl = new UtilRelayCommand(delegate(object obj)
             {
                 DataSendALLLine();
-
             }, pre =>
             {
                 return true;
             }));
         }
-        public ICommand _proggramOutPutFile;
-        public ICommand ProggramOutPutFile
-        {
-            get => _proggramOutPutFile ?? (_proggramOutPutFile = new UtilRelayCommand(delegate (object obj)
-            {
-                if (!string.IsNullOrEmpty(CurProgmFile))
-                {
-                    var diag = new SaveFileDialog()
-                    {
-                        Filter = "Operator|*.txt",
-                    };
-                    if (diag.ShowDialog().HasValue)
-                    {
-                        if (!string.IsNullOrEmpty(diag.SafeFileName))
-                        {
-                            //var file = File.Open(Path.(diag.SafeFileName), FileMode.OpenOrCreate, FileAccess.ReadWrite);
-                            foreach (var edit in App.Locator.TextModal.AllFileEditor)
-                            {
-                                edit.FileName = diag.FileName;
-                                edit.FilePath = Path.GetFullPath(diag.FileName);
-                            }
-                            try
-                            {
-                                Application.Current.Dispatcher.Invoke(() =>
-                                {
-                                    var file = diag.OpenFile();
-                                    if (file.CanWrite)
-                                    {
-                                        App.Locator.TextModal.SaveFile();
-                                        file.Flush();
-                                        file.Close();
-                                        AddLogMsg("保存成功");
-                                    }
-                                });
-                            }
-                            catch (Exception ex)
-                            {
-                                AddLogMsg("写文件错误:" + ex.Message, 1);
-                            }
-                        }
-                        if (ProgrammeFiles.All(p => p.Des != diag.SafeFileName) && !string.IsNullOrEmpty(diag.SafeFileName))
-                        {
-                            ProgrammeFiles.Add(new ImgItemUi()
-                            {
-                                Des = Path.GetFileName(diag.SafeFileName),
-                                FnPath = Path.GetFullPath(diag.SafeFileName),
-                                IsActived = true,
-                            });
-                        }
-                        if (!string.IsNullOrEmpty(diag.FileName))
-                        {
-                            CurProgmFile = Path.GetFullPath(diag.FileName);
-                        }
-                    }
-                }
-
-            }, pre =>
-            {
-                return true;
-            }));
-        }
+        
         public ICommand _proggramDownLoadFile;
         public ICommand ProggramDownLoadFile
         {
             get => _proggramDownLoadFile ?? (_proggramDownLoadFile = new UtilRelayCommand(delegate (object obj)
             {
-                if (_compFile != null && _compFile.Any())
+                var p = new AlgProgmFiles();
+                if (ProgrammeFiles.Any(s => s.IsActived))
                 {
+                    CompFile.Clear();
+                    AddLogMsg($"开始编译...");
+                    CompFile.AddRange(p.CompileAllFiles(ProgrammeFiles));
+                    AddLogMsg($"编译完成,编译文件数{_compFile.Count}");
                     ProgrammDownLoadFile();
                 }
                 else
                 {
-                    AddLogMsg("未编译文件，请先编译文件。");
+                    AddLogMsg("无文件被打开，请打开一个文件后再编译发送");
                 }
+               
 
 
 
@@ -2933,98 +3367,101 @@ namespace TspUtil
             }));
         }
 
-
+        
         private ICommand _fileItemSelectedChange;
         public ICommand FileItemSelectedChange
         {
-            get => _fileItemSelectedChange ?? (_fileItemSelectedChange = new UtilRelayCommand(delegate (object obj)
+            get => _fileItemSelectedChange ?? (_fileItemSelectedChange = new UtilRelayCommand(delegate(object obj)
             {
                 var param = obj as ExCommandParameter;
-                Task.Factory.StartNew(() =>
+
+                FileManaEnable = false;
+                if (param?.Parameter is ImgItemUi info)
                 {
-                    FileManaEnable = false;
-                    if (param?.Parameter is ImgItemUi info)
+                    if (info.Des.Contains(".txt"))
                     {
-                        if (info.Des.Contains(".txt"))
+                        CurrentChooseFile = info.Des;
+                        info.IsActived = true;
+                    }
+
+                    AddLogMsg("打开文件：" + info.FnPath);
+
+
+                    
+                    try
+                    {
+                        CurProgmFile = info.FnPath;
+                        if (!string.IsNullOrEmpty(info.Des))
                         {
-                            CurrentChooseFile = info.Des;
-                            info.IsActived = true;
-                            _rsst.Reset();
-                            for (int i = 0; i < ProgrammeFiles.Count; i++)
+                            var str = File.ReadAllText(info.FnPath);
+
+                            if (!Pane.Children.Any(p => p.Title == info.Des))
                             {
-                                if (ProgrammeFiles[i].Des == info.Des)
+                                var doc = App.Locator.TextModal.CreateAnDocumentEditor(str, info.Des, info.FnPath,out _curEditor);
+                                Pane.Children.Add(doc);
+                                for (int i = 0; i < Pane.ChildrenCount; i++)
                                 {
-                                    info.IsActived = true;
-                                    break;
+                                    if (Pane.Children[i].Title == info.Des)
+                                    {
+                                        Pane.SelectedContentIndex = i;
+                                        break;
+                                    }
+                                }
+                            }
+                            else
+                            {
+
+                                for (int i = 0; i < Pane.ChildrenCount; i++)
+                                {
+                                    if (Pane.Children[i].Title == info.Des)
+                                    {
+                                        Pane.SelectedContentIndex = i;
+                                        break;
+                                    }
                                 }
                             }
                         }
-                        AddLogMsg("打开文件：" + info.FnPath);
-
-
-                        Application.Current.Dispatcher.Invoke(() =>
-                        {
-                            try
-                            {
-                                CurProgmFile = info.FnPath;
-                                if (!string.IsNullOrEmpty(info.Des))
-                                {
-                                    var str = File.ReadAllText(info.FnPath);
-                                    
-                                    if (!Pane.Children.Any(p=>p.Title==info.Des))
-                                    {
-                                        var doc = App.Locator.TextModal.CreateAnDocumentEditor(str, info.Des,info.FnPath);
-                                        Pane.Children.Add(doc);
-                                        for (int i = 1; i < Pane.ChildrenCount; i++)
-                                        {
-                                            if (Pane.Children[i].Title == info.Des)
-                                            {
-                                                Pane.SelectedContentIndex = i;
-                                                break;
-                                            }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        for (int i = 1; i < Pane.ChildrenCount; i++)
-                                        {
-                                            if (Pane.Children[i].Title == info.Des)
-                                            {
-                                                Pane.SelectedContentIndex = i;
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                AddLogMsg("打开文件错误:" + ex.Message, 1);
-                            }
-                        });
-                        FileManaEnable = true;
                     }
-                });
-            }, pre =>
-            {
-                return true;
-            }));
+                    catch (Exception ex)
+                    {
+                        AddLogMsg("打开文件错误:" + ex.Message, 1);
+                    }
+                    FileManaEnable = true;
+                }
+
+            }, pre => { return true; }));
         }
 
         private bool _isReadNextLine = false;
         private ICommand _readNextLine;
+        private int _lineIndex=0;
         public ICommand ReadNextLine
         {
             get => _readNextLine ?? (_readNextLine = new UtilRelayCommand(delegate(object obj)
             {
-                _isReadNextLine = true;
-                ReadFromDevice();
+                var dev =ClientRunList.LastOrDefault();
+                Task.Factory.StartNew(() =>
+                {
+                    ReadFromDevice(dev, 0);
+                    AddLogMsg($"读取到一共有{_lineIndex}行");
+                    for (var i = 1; i <= _lineIndex; i++)
+                    {
+                        ReadFromDevice(dev, i);
+                        AddLogMsg($"读取完毕，第{i}行");
+                    }
+                    _lineIndex = 0;
+
+                });
+               
+               
+               
 
             }, pre =>
             {
                 return true;
             }));
         }
+
         private ICommand _executeNextLine;
         public ICommand ExecuteNextLine
         {
@@ -3033,7 +3470,7 @@ namespace TspUtil
                 _executeNext.Set();
             }, pre =>
             {
-                return true;
+                return NextEnable;
             }));
         }
 
@@ -3043,62 +3480,74 @@ namespace TspUtil
         {
             get => _programmeSaveFile ?? (_programmeSaveFile = new UtilRelayCommand(delegate (object obj)
             {
-                if (string.IsNullOrEmpty(CurProgmFile))
+                if (!string.IsNullOrEmpty(CurProgmFile))
                 {
-                    var fname = $"New_File{tmpIndex++}.txt";
-                    var path = _gbl.ProgmWorkDir +"\\" +fname;
-                    Pane.Children.Add(App.Locator.TextModal.CreateAnDocumentEditor("", fname,
-                        Path.GetFullPath(_gbl.ProgmWorkDir)));
-                    CurProgmFile = Path.GetFullPath(_gbl.ProgmWorkDir);
-                }
-                else
-                {
-                    if (!string.IsNullOrEmpty(CurProgmFile))
+                    try
                     {
-                        try
+                        Application.Current.Dispatcher.Invoke(() =>
                         {
-                            Application.Current.Dispatcher.Invoke(() =>
-                            {
-                                App.Locator.TextModal.SaveFile();
-                                AddLogMsg("保存成功");
-                            });
-                        }
-                        catch (Exception ex)
-                        {
-                            AddLogMsg("写文件错误:" + ex.Message, 1);
-                        }
-                    }
-                    if (ProgrammeFiles.All(p => p.Des != Path.GetFileName(CurProgmFile)) && !string.IsNullOrEmpty(CurProgmFile) && CurProgmFile.Contains(".txt"))
-                    {
-                        ProgrammeFiles.Add(new ImgItemUi()
-                        {
-                            Des = Path.GetFileName(CurProgmFile),
-                            FnPath = Path.GetFullPath(CurProgmFile),
+                            App.Locator.TextModal.SaveFile();
+                            AddLogMsg("保存成功");
                         });
                     }
+                    catch (Exception ex)
+                    {
+                        AddLogMsg("写文件错误:" + ex.Message, 1);
+                    }
                 }
+                
             }, pre =>
             {
                 return true;
             }));
         }
 
-        public ICommand _proggramRemoveFile;
-        public ICommand ProggramRemoveFile
+        public ICommand _proggramNewFile;
+        public ICommand ProggramNewFile
         {
-            get => _proggramRemoveFile ?? (_proggramRemoveFile = new UtilRelayCommand(delegate (object obj)
+            get => _proggramNewFile ?? (_proggramNewFile = new UtilRelayCommand(delegate (object obj)
             {
-                foreach (var info in ProgrammeFiles)
+                var fname = $"New_File{tmpIndex++}.txt";
+                var path = _gbl.ProgmWorkDir + "\\" + fname;
+                var diag = new SaveFileDialog()
                 {
-                    var file = Path.GetFileName(CurProgmFile);
-                    if (file == info.Des)
+                    Filter = "Text|*.txt",
+                };
+                var res = diag.ShowDialog();
+                if (res.HasValue)
+                {
+                    fname = diag.SafeFileName;
+                    path = diag.FileName;
+
+                    CurProgmFile = path;
+                    if (!string.IsNullOrEmpty(path))
                     {
-                        ProgrammeFiles.Remove(info);
-                       // Editor.Clear();
-                        CurProgmFile = string.Empty;
-                        LastSaveProgmFile=String.Empty;
-                        break;
+                        try
+                        {
+                            if (File.Exists(path))
+                            {
+                                
+                            }
+                            else
+                            {
+                                File.Open(path, FileMode.Create);
+                                Pane.Children.Add(App.Locator.TextModal.CreateAnDocumentEditor("", fname,
+                                    path, out _curEditor));
+                                ProgrammeFiles.Add(new ImgItemUi()
+                                {
+                                    Des = fname,
+                                    FnPath = path,
+                                    IsActived = true,
+                                });
+                            }
+                        }
+                        catch (Exception)
+                        {
+                           
+                        }
                     }
+
+                   
                 }
             }, pre =>
             {
@@ -3131,7 +3580,7 @@ namespace TspUtil
                     {
                         tsks.LastOrDefault().RunSynchronously();
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
                         //
                     }
@@ -3154,28 +3603,170 @@ namespace TspUtil
             get => _readFileFromDevice ?? (_readFileFromDevice =
                        new UtilRelayCommand(delegate(object obj)
                        {
-                           ReadFilesFromDevice();
+                           ReadFilesFromDevice(); 
 
                        }, pre => { return true; }));
         }
 
+        private ICommand _dataSynchronize;
+        public ICommand DataSynchronize
+        {
+            get => _dataSynchronize ?? (_dataSynchronize = new UtilRelayCommand(delegate(object obj)
+            {
+                ReadParam();
+
+            }, pre => { return true; }));
+        }
+
+        private ICommand _keyBinding;
+        public ICommand KeyBinding
+        {
+            get => _keyBinding ?? (_keyBinding = new UtilRelayCommand(delegate(object obj)
+            {
+                ReadParam();
+                //App.Locator.KeyBind.SelectParam1 = new KeyBindParam("PowerOn_Panel_bistmode", "0x0100");
+                var win = new KeyBind();
+                win.ShowDialog();
+
+            }, pre => { return true; }));
+        }
         #endregion
         #region 菜单栏
 
-        private ICommand _sendToDDR;
-        public ICommand SendToDDR
+        private bool _isHw = false;
+        private bool _isMcu = false;
+        private bool _isFpga = false;
+        private string _hwStr = string.Empty;
+        private string _mcuStr = string.Empty;
+        private string _fpgaStr = string.Empty;
+
+        private ICommand _readVersion;
+        public ICommand ReadVersion
         {
-            get => _sendToDDR ?? (_sendToDDR = new UtilRelayCommand(delegate(object obj)
+            get => _readVersion ?? (_readVersion = new UtilRelayCommand(delegate(object obj)
             {
-                CmdNetWorkSend();
+                _isHw = false;
+                _isMcu = false;
+                _isFpga = false;
+                _hwStr = "Hardware Version:";
+                _mcuStr = "MCU Version:";
+                _fpgaStr = "FPGA Version:";
+                var hw = StringToByteArray("$c.Version,hw\r\n");
+                var mcu = StringToByteArray("$c.Version,mcu\r\n");
+                var fpga = StringToByteArray("$c.Version,fpga\r\n");
+                var cmd = (string) obj;
 
-            }, pre =>
-            {
-                return true;
-            }));
+                if (ClientRunList.Any())
+                {
+                    var tsks = ClientRunList.Select(pair => Task.Factory.StartNew(() =>
+                    {
+
+                        var isALLRdOk = true;
+                        _isHw = true;
+                        if (!pair.DataSendFrame(hw, 0, _gbl.LongTimeoutForElapsed))
+                        {
+                            isALLRdOk &= false;
+                            AddLogMsg($"发送命令失败{cmd}");
+                        }
+                        else
+                        {
+                            _log.Debug(
+                                $"---> {string.Join($" ", Array.ConvertAll(hw, input => $"{input:X2}"))}:{Encoding.ASCII.GetString(hw)}");
+                            AddLogMsg($"发送命令成功{cmd}");
+                        }
+
+                        _isHw = false;
+                        _isMcu = true;
+                        if (!pair.DataSendFrame(mcu, 0, _gbl.LongTimeoutForElapsed))
+                        {
+                            isALLRdOk &= false;
+                            AddLogMsg($"发送命令失败{cmd}");
+                        }
+                        else
+                        {
+                            _log.Debug(
+                                $"---> {string.Join($" ", Array.ConvertAll(hw, input => $"{input:X2}"))}:{Encoding.ASCII.GetString(hw)}");
+                            AddLogMsg($"发送命令成功{cmd}");
+                        }
+
+                        _isMcu = false;
+                        _isFpga = true;
+                        if (!pair.DataSendFrame(fpga, 0, _gbl.LongTimeoutForElapsed))
+                        {
+                            isALLRdOk &= false;
+                            AddLogMsg($"发送命令失败{cmd}");
+                        }
+                        else
+                        {
+                            _log.Debug(
+                                $"---> {string.Join($" ", Array.ConvertAll(hw, input => $"{input:X2}"))}:{Encoding.ASCII.GetString(hw)}");
+                            AddLogMsg($"发送命令成功{cmd}");
+                        }
+
+                        _isFpga = true;
+                        if (isALLRdOk)
+                        {
+                            Application.Current.Dispatcher.Invoke(() =>
+                            {
+                                var wind = new NormalAbout(_hwStr, _mcuStr, _fpgaStr, "SoftWare Version:"+SwVersion,"");
+                                var res = wind.ShowDialog();
+                            });
+                        }
+                        else
+                        {
+                            AddLogMsg("读取所有命令失败");
+                        }
+
+
+                    }));
+                    try
+                    {
+                        tsks.LastOrDefault().RunSynchronously();
+                    }
+                    catch (Exception)
+                    {
+                        //
+                    }
+                }
+                else
+                {
+                    AddLogMsg("无设备连接请连接网络编程设备");
+                }
+
+
+
+
+            }, pre => { return true; }));
         }
+        private ICommand _langSetCommand;
+        public ICommand LangSetCommand
+        {
+            get
+            {
+                return _langSetCommand ?? (_langSetCommand = new UtilRelayCommand(delegate(object obj)
+                {
 
-
+                    if (obj is Lang)
+                    {
+                        //CurLang = (Lang) obj;
+                        ResourceDictionary dict = new ResourceDictionary();
+                        switch (CurLang)
+                        {
+                            case Lang.English:
+                                dict.Source = new Uri(@"Resource\localize.xaml", UriKind.RelativeOrAbsolute);
+                                break;
+                            case Lang.Chinese:
+                                dict.Source = new Uri(@"Resource\localizezh-cn.xaml", UriKind.RelativeOrAbsolute);
+                                break;
+                        }
+                      //  Application.Current.MainWindow.Resources.MergedDictionaries.Clear();
+                        Application.Current.MainWindow.Resources.MergedDictionaries[3].Source = dict.Source;
+                       // Application.Current.MainWindow.Resources.MergedDictionaries[4].Source=dict.Source;
+                        _gbl.LangSet = CurLang.ToString();
+                    }
+                }));
+            }
+        }
 
         #endregion
 
@@ -3191,12 +3782,197 @@ namespace TspUtil
 
         #endregion
 
+
+
         #region 配置功能
         public byte[] ConvertTheText(string resCmd)
         {
             int register = 0;
             string hex = string.Empty;
-            Action<string,byte[],string> action = (p,b,h) => 
+            switch (resCmd)
+            {
+                case "PWONIOVCC:":
+                    register = 1;
+                    hex = PwonIovccParam;
+                    break;
+                case "PWONVSP/VSN:":
+                    register = 2;
+                    hex = PwonVspParam;
+                    break;
+                case "PWONRESX:":
+                    register = 3;
+                    hex = PwonResxParam;
+                    break;
+                case "PWOFFIOVCC:":
+                    register = 11;
+                    hex = PwoffIovccParam;
+                    break;
+                case "PWOFFVSP/VSN:":
+                    register = 12;
+                    hex = PwoffVspParam;
+                    break;
+                case "PWOFFRESX:":
+                    register = 13;
+                    hex = PwoffResxParam;
+                    break;
+                case "BRIGHT:":
+                    register = 4;
+                    hex = BrightParam;
+                    break;
+                case "KEY1":
+                    register = 14;
+                    hex = SelectHexOnKeySetting1;
+                    break;
+                case "KEY2":
+                    register = 15;
+                    hex = SelectHexOnKeySetting2;
+                    break;
+                case "KEY3":
+                    register = 16;
+                    hex = SelectHexOnKeySetting3;
+                    break;
+                case "KEY4":
+                    register = 17;
+                    hex = SelectHexOnKeySetting4;
+                    break;
+                case "KEY5":
+                    register = 18;
+                    hex = SelectHexOnKeySetting5;
+                    break;
+                case "KEY6":
+                    register = 19;
+                    hex = SelectHexOnKeySetting6;
+                    break;
+                case "PLL:":
+                    register = 20;
+                    if (DscMode||Ext_DscMode)
+                    {
+                        register += 20;
+                    }
+
+                    hex = PllParam;
+                    break;
+
+                case "REG_B6:":
+                    register = 22;
+                    if (DscMode || Ext_DscMode)
+                    {
+                        register += 20;
+                    }
+                    hex = Regb6Param;
+                    break;
+                case "REG_D6:":
+                    register = 23;
+                    if (DscMode || Ext_DscMode)
+                    {
+                        register += 20;
+                    }
+                    hex = Regd6Param;
+                    break;
+                case "REG_DE:":
+                    register = 24;
+                    if (DscMode || Ext_DscMode)
+                    {
+                        register += 20;
+                    }
+                    hex = RegdeParam;
+                    break;
+
+                case "PANEL_B6:":
+                    register = 28;
+                    if (DscMode || Ext_DscMode)
+                    {
+                        register += 20;
+                    }
+                   hex = Panelb6Param;
+                    break;
+                case "FPGA_PCLK:":
+                    register = 29;
+                    if (DscMode || Ext_DscMode)
+                    {
+                        register += 20;
+                    }
+                    hex = Panelb6Param;
+                    break;
+
+                case "VSA:":
+                    register = 30;
+                    if (DscMode || Ext_DscMode)
+                    {
+                        register += 20;
+                    }
+                    hex = VsaParam;
+                    break;
+                case "HSA:":
+                    register = 31;
+                    if (DscMode || Ext_DscMode)
+                    {
+                        register += 20;
+                    }
+                    hex = HasParam;
+                    break;
+                case "VFP:":
+                    register = 32;
+                    if (DscMode || Ext_DscMode)
+                    {
+                        register += 20;
+                    }
+
+                    hex = VfpParam;
+                    break;
+                case "HFP:":
+                    register = 33;
+                    if (DscMode || Ext_DscMode)
+                    {
+                        register += 20;
+                    }
+                    hex = HfpParam;
+                    break;
+                case "VBP:":
+                    register = 34;
+                    if (DscMode || Ext_DscMode)
+                    {
+                        register += 20;
+                    }
+                    hex = VbpParam;
+                    break;
+                case "HBP:":
+                    register = 35;
+                    if (DscMode || Ext_DscMode)
+                    {
+                        register += 20;
+                    }
+                    hex = HbpParam;
+                    break;
+                case "HACT:":
+                    register = 36;
+                    if (DscMode || Ext_DscMode)
+                    {
+                        register += 20;
+                    }
+                    hex = HactParam;
+                    break;
+                case "VACT:":
+                    register = 37;
+                    if (DscMode || Ext_DscMode)
+                    {
+                        register += 20;
+                    }
+                    hex = VactParam;
+                    break;
+                default:
+                    AddLogMsg("未发现命令");
+                    break;
+                    
+            }
+            var cmd = $"$c.register.write,{register},{hex}\r\n";
+            return ProgrammeUtil.StringToByteArray(cmd);
+        }
+
+        public void ConvertTheText(int resCmd,string value)
+        {
+            string hex = string.Empty;
+            Action<string, byte[], string> action = (p, b, h) =>
             {
                 if (b != null)
                 {
@@ -3206,7 +3982,7 @@ namespace TspUtil
                         hex += $"{b[i].ToString("x2")}";
                     }
                 }
-                else if(p!=null)
+                else if (p != null)
                 {
                     int.TryParse(p, out int result);
                     var tmp = ProgrammeUtil.ParserDataLH(result);
@@ -3216,101 +3992,290 @@ namespace TspUtil
                         hex += $"{tmp[i].ToString("x2")}";
                     }
                 }
-                else if (h!=null)
+                else if (h != null)
                 {
                     hex = $"0x{h}";
                 }
             };
+
+            Func<int> act = () =>
+            {
+                var lst = App.Locator.KeyBind.ParamLst.ToList();
+                for (int i = 0; i < lst.Count; i++)
+                {
+                    if (lst[i].ParamVal == value)
+                    {
+                        return i;
+                    }
+                }
+
+                return -1;
+            };
             switch (resCmd)
             {
-                case "IOVCC:":
-                    register = 1;
-                    action(IovccParam, null, null);
+                case 1:
+                    PwonIovccParam = int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
                     break;
-                case "VSP/VSN:":
-                    register = 2;
-                    action(VspParam, null, null);
+                case 2:
+                    PwonVspParam = int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
                     break;
-                case "RESX:":
-                    register = 3;
-                    action(ResxParam, null, null);
+                case 3:
+                    PwonResxParam = int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
                     break;
-                case "BRIGHT:":
-                    register = 4;
-                    action(BrightParam, null, null);
+                case 4:
+                    BrightParam = int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                    break;
+                case 11:
+                    PwoffIovccParam = int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                    break;
+                case 12:
+                    PwoffVspParam = int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                    break;
+                case 13:
+                    PwoffResxParam = int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                    break;
+                case 14:
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        var c = value[3];
+                        
+                        if (c != '0')
+                        {
+                            App.Locator.KeyBind.SelectIndex1=act();
+                        }
+                        else
+                        {
+                            var index = value[5];
+                            if (!App.Locator.KeyBind.ParamLst.Contains(new KeyBindParam($"file_{index}", $"{value}")))
+                            {
+                                App.Locator.KeyBind.ParamLst.Add(new KeyBindParam($"file_{index}", $"{value}"));
+                               
+                            }
+                            App.Locator.KeyBind.SelectIndex1 = act();
+                        }
+                    });
+                   
+                    break;
+                case 15:
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        var c = value[3];
+
+                        if (c != '0')
+                        {
+                            App.Locator.KeyBind.SelectIndex2 = act();
+                        }
+                        else
+                        {
+                            var index = value[5];
+                            if (!App.Locator.KeyBind.ParamLst.Contains(new KeyBindParam($"file_{index}", $"{value}")))
+                            {
+                                App.Locator.KeyBind.ParamLst.Add(new KeyBindParam($"file_{index}", $"{value}"));
+                                
+                            }
+                            App.Locator.KeyBind.SelectIndex2 = act();
+                        }
+                    });
+                    break;
+                case 16:
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        var c = value[3];
+
+                        if (c != '0')
+                        {
+                            App.Locator.KeyBind.SelectIndex3 = act();
+                        }
+                        else
+                        {
+                            var index = value[5];
+                            if (!App.Locator.KeyBind.ParamLst.ToList().Exists(p=>p.ParamVal==value))
+                            {
+                                App.Locator.KeyBind.ParamLst.Add(new KeyBindParam($"file_{index}", $"{value}"));
+                                
+                            }
+                            App.Locator.KeyBind.SelectIndex3 = act();
+                        }
+                    });
+                    break;
+                case 17:
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        var c = value[3];
+
+                        if (c != '0')
+                        {
+                            App.Locator.KeyBind.SelectIndex4 = act();
+
+                        }
+                        else
+                        {
+                            var index = value[5];
+                            if (!App.Locator.KeyBind.ParamLst.ToList().Exists(p => p.ParamVal == value))
+                            {
+                                App.Locator.KeyBind.ParamLst.Add(new KeyBindParam($"file_{index}", $"{value}"));
+                              
+                            }
+                            App.Locator.KeyBind.SelectIndex4 = act();
+                        }
+                    });
+                    break;
+                case 18:
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        var c = value[3];
+
+                        if (c != '0')
+                        {
+                            App.Locator.KeyBind.SelectIndex5 = act();
+                        }
+                        else
+                        {
+                            var index = value[5];
+                            if (!App.Locator.KeyBind.ParamLst.ToList().Exists(p => p.ParamVal == value))
+                            {
+                                App.Locator.KeyBind.ParamLst.Add(new KeyBindParam($"file_{index}", $"{value}"));
+                               
+                            }
+                            App.Locator.KeyBind.SelectIndex5 = act();
+                        }
+                    });
+                    break;
+                case 19:
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        var c = value[3];
+
+                        if (c != '0')
+                        {
+                            App.Locator.KeyBind.SelectIndex6 = act();
+                        }
+                        else
+                        {
+                            var index = value[5];
+                            if (!App.Locator.KeyBind.ParamLst.ToList().Exists(p => p.ParamVal == value))
+                            {
+                                App.Locator.KeyBind.ParamLst.Add(new KeyBindParam($"file_{index}", $"{value}"));
+                              
+                            }
+                            App.Locator.KeyBind.SelectIndex6 = act();
+                        }
+                    });
                     break;
 
-                case "PLL:":
-                    register = 20;
-                    int.TryParse(PllParam, out int num);
-                    var tmp = new List<byte>();
-                    tmp.Add((byte)(num / 5));
-                    tmp.Add(0xc5);
-                    //tmp.AddRange(ProgrammeUtil.ParserDataLH(9));
-                    action(PllParam, tmp.ToArray(), null);
-                    break;
-
-                case "REG_B6:":
-                    register = 22;
-                    action(null, null, Regb6Param);
-                    break;
-                case "REG_D6:":
-                    register = 23;
-                    action(null, null, Regd6Param);
-                    break;
-                case "REG_DE:":
-                    register = 24;
-                    action(null, null, RegdeParam);
-                    break;
-
-                case "PANEL_B6:":
-                    register = 28;
-                    action(null, null, Panelb6Param);
-                    break;
-
-                case "VSA:":
-                    register = 30;
-                    action(VsaParam, null, null);
-                    break;
-                case "HSA:":
-                    register = 31;
-                    action(HasParam, null, null);
-                    break;
-                case "VFP:":
-                    register = 32;
-                    action(VfpParam, null, null);
-                    break;
-                case "HFP:":
-                    register = 33;
-                    action(HfpParam, null, null);
-                    break;
-                case "VBP:":
-                    register = 34;
-                    action(VbpParam, null, null);
-                    break;
-                case "HBP:":
-                    register = 35;
-                    action(HbpParam, null, null);
-                    break;
-                case "HACT:":
-                    register = 36;
-                    action(HactParam, null, null);
-                    break;
-                case "VACT:":
-                    register = 37;
-                    action(VactParam, null, null);
+                default:
+                    _log.Debug($"此寄存器{resCmd}={value}");
                     break;
             }
-
-            if (Compress)
+            if (Normal)
             {
-                register += 20;
+                switch (resCmd)
+                {
+                   
+                    case 20:
+                        PllParam = int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                        break;
+                    case 22:
+                        Regb6Param = value;
+                        break;
+                    case 23:
+                        Regd6Param = value;
+                        break;
+                    case 24:
+                        RegdeParam = value;
+                        break;
+                    case 28:
+                        Panelb6Param = value;
+                        break;
+                    case 29:
+                        FpgaPclk = int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                        break;
+                    case 30:
+                        VsaParam = int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                        break;
+                    case 31:
+                        HasParam =int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                        break;
+                    case 32:
+                        VfpParam =int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                        break;
+                    case 33:
+                        HfpParam =int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                        break;
+                    case 34:
+                        VbpParam =int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                        break;
+                    case 35:
+                        HbpParam =int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                        break;
+                    case 36:
+                        HactParam =int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                        break;
+                    case 37:
+                        VactParam =int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                        break;
+                    default:
+                        _log.Debug($"此寄存器{resCmd}={value}");
+                        break;
+
+                }
             }
-            var cmd = $"$c.register.write,{register},{hex}\r\n";
-            return ProgrammeUtil.StringToByteArray(cmd);
+            else if (DscMode || Ext_DscMode)
+            {
+
+                switch (resCmd)
+                {
+                    case 40:
+                        PllParam =int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                        break;
+                    case 42:
+                        Regb6Param = value;
+                        break;
+                    case 43:
+                        Regd6Param = value;
+                        break;
+                    case 44:
+                        RegdeParam = value;
+                        break;
+                    case 48:
+                        Panelb6Param = value;
+                        break;
+                    case 49:
+                        FpgaPclk =int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                        break;
+                    case 50:
+                        VsaParam =int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                        break;
+                    case 51:
+                        HasParam =int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                        break;
+                    case 52:
+                        VfpParam =int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                        break;
+                    case 53:
+                        HfpParam =int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                        break;
+                    case 54:
+                        VbpParam =int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                        break;
+                    case 55:
+                        HbpParam =int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                        break;
+                    case 56:
+                        HactParam =int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                        break;
+                    case 57:
+                        VactParam =int.Parse(value.Substring(2), NumberStyles.HexNumber).ToString();
+                        break;
+                    default:
+                        _log.Debug($"此寄存器{resCmd}={value}");
+                        break;
+                }
+            }
+           
+
         }
 
         #endregion
-
     }
 }
